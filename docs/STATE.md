@@ -26,9 +26,11 @@ commit/CHANGELOG/DEVICE-CHECKS'te.
 
 1. **v1.14.0 etiketi + deploy** (Epic 31+32+33). Sıra uzantı deposunun sunum runbook'unda
    (`docs/DEMO.md` §A); uzantının sunumu **2026-09-28**.
-2. **`DEPLOY_OVERLAY_TOKEN`'a Actions: Read** (klasik jetonda `repo`) — yoksa uzantılı her dağıtım
-   kapıda adıyla durur (OPH-345). `EE_REQUIRED=true`'yu dağıtım hattı kendisi yazar
-   (`deploy.yml`) — elle eklemeye gerek yok.
+2. **Dağıtım sunucudaki runner'a geçiyor (ADR-0043)** — runner `alliswell-prod` sunucuda kurulu ve
+   çevrimiçi, uzantı deposunun secret/değişkenleri tamam. Kalan: bu depoya `DEPLOY_DISPATCH_TOKEN`
+   (fine-grained, yalnız uzantı deposu, Actions: Read and write) ve `vars.DEPLOY_VIA_OVERLAY=true`;
+   ilk koşu canlıdaki çiftle (v1.13.0 + uzantı `e4cf2dd`, uzantıda `DEPLOY_OVERLAY_REF`), sunum
+   için `a12ce24`. Bu yolda `DEPLOY_OVERLAY_TOKEN` gerekmez; `EE_REQUIRED=true`'yu hat kendisi yazar.
 3. **`main` için branch protection** — Settings › Branches, public depoda ücretsiz tek kural
    (2026-09-26: korumasız).
 4. **OPH-273** — Cloudflare: `/app/*` için Browser Cache TTL → *Respect Existing Headers* ya da

@@ -236,7 +236,10 @@ describe('deploy.yml wires the gate where it can stop the deploy', () => {
     expect(step).toContain('id: overlay_ci');
     expect(step).toContain('git show "$WORKFLOW_SHA:scripts/deploy/overlay-ci.mjs"');
     expect(step).toContain('node "$RUNNER_TEMP/overlay-ci.mjs"');
-    expect(step).toContain('WORKFLOW_SHA: ${{ github.workflow_sha }}');
+    // `job.workflow_sha` is this file's commit even when another repository
+    // calls it (ADR-0043); `github.workflow_sha` alone would then name the
+    // caller's commit, which the checkout does not have.
+    expect(step).toContain('WORKFLOW_SHA: ${{ job.workflow_sha || github.workflow_sha }}');
   });
 
   test('the server is handed the CHECKED commit, and refuses to deploy without one', () => {
@@ -247,5 +250,88 @@ describe('deploy.yml wires the gate where it can stop the deploy', () => {
     // the commit. A `SHA=` taken from the ref again would reopen the race.
     expect(workflow).not.toMatch(/SHA=\$\(git -C "\$OVERLAY_DIR" rev-parse/);
     at('git -C "$OVERLAY_DIR" checkout -f --quiet "$SHA"');
+  });
+});
+
+describe('the deploy can run on the server’s own runner without widening what reaches it (ADR-0043)', () => {
+  // Source reads again: a runner that lives on the server holds the deploy key
+  // on its disk, so what decides the code it builds, the key's lifetime and
+  // which repository may hold such a runner are all properties of these files.
+  const read = (name) =>
+    readFileSync(
+      fileURLToPath(new URL(`../../../../.github/workflows/${name}`, import.meta.url)),
+      'utf8',
+    );
+  const deploy = read('deploy.yml');
+  const release = read('release.yml');
+  const at = (text, needle) => {
+    const index = text.indexOf(needle);
+    expect(index, `missing: ${needle}`).toBeGreaterThan(-1);
+    return index;
+  };
+
+  test('GitHub’s runner stays the default; only a caller names another', () => {
+    at(deploy, `runs-on: \${{ fromJSON(inputs.runner || '"ubuntu-latest"') }}`);
+    at(deploy, `default: '"ubuntu-latest"'`);
+  });
+
+  test('the ref is checked before any of its code runs, by the script of the workflow’s own commit', () => {
+    const check = at(deploy, '- name: Check the ref is a release');
+    // After the SDK installs (they read the checkout, never run it)…
+    expect(check).toBeGreaterThan(at(deploy, '- uses: actions/setup-node@v4'));
+    // …and before every step that executes it.
+    expect(check).toBeLessThan(at(deploy, '- name: Build the web bundle for production'));
+    expect(check).toBeLessThan(at(deploy, '- name: Build the landing site'));
+    const step = deploy.slice(check, at(deploy, "- name: Check the overlay's CI"));
+    expect(step).toContain('git show "$WORKFLOW_SHA:scripts/deploy/check-ref.mjs"');
+    expect(step).toContain('WORKFLOW_SHA: ${{ job.workflow_sha || github.workflow_sha }}');
+  });
+
+  test('the repository deployed is an input — a caller’s own name is never deployed', () => {
+    at(deploy, 'repository: ${{ inputs.core_repository || github.repository }}');
+    at(
+      deploy,
+      'CORE_URL: https://github.com/${{ inputs.core_repository || github.repository }}.git',
+    );
+    expect(deploy).not.toContain('CORE_URL: https://github.com/${{ github.repository }}.git');
+  });
+
+  test('the job’s own token stands in for the overlay token only inside the overlay’s repository', () => {
+    const fallback =
+      "OVERLAY_TOKEN: ${{ secrets.DEPLOY_OVERLAY_TOKEN || (github.repository == secrets.DEPLOY_OVERLAY_REPO && github.token || '') }}";
+    // Both readers — the gate and the payload — and no bare third one.
+    expect(deploy.split(fallback)).toHaveLength(3);
+    expect(deploy).not.toMatch(/OVERLAY_TOKEN: \$\{\{ secrets\.DEPLOY_OVERLAY_TOKEN \}\}/);
+  });
+
+  test('the deploy key is removed after every job, whatever its outcome, as the last step', () => {
+    const remove = at(deploy, '- name: Remove the deploy key');
+    const step = deploy.slice(remove);
+    expect(step).toMatch(/\n\s+if: always\(\)\n/);
+    expect(step).toContain('rm -f ~/.ssh/id_deploy');
+    expect(step.indexOf('- name:', 1)).toBe(-1);
+  });
+
+  test('sudo installs ImageMagick only where it is missing', () => {
+    const guard = at(
+      deploy,
+      'if ! command -v magick >/dev/null && ! command -v convert >/dev/null; then',
+    );
+    const end = deploy.indexOf('\n          fi\n', guard);
+    const sudo = [...deploy.matchAll(/sudo apt-get/g)].map((m) => m.index);
+    expect(sudo).toHaveLength(2); // update + install — both inside that guard, none elsewhere
+    for (const index of sudo) {
+      expect(index).toBeGreaterThan(guard);
+      expect(index).toBeLessThan(end);
+    }
+  });
+
+  test('a release takes exactly one deploy path, and never names the private repository', () => {
+    at(release, "if: vars.DEPLOY_VIA_OVERLAY != 'true'\n    uses: ./.github/workflows/deploy.yml");
+    const dispatch = release.slice(at(release, "if: vars.DEPLOY_VIA_OVERLAY == 'true'"));
+    expect(dispatch).toContain('REPO: ${{ secrets.DEPLOY_OVERLAY_REPO }}');
+    expect(dispatch).toContain('GH_TOKEN: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}');
+    expect(dispatch).toContain('gh workflow run deploy.yml -R "$REPO" -f ref="$TAG"');
+    expect(release).not.toMatch(/vars\.DEPLOY_OVERLAY_REPO|vars\.DEPLOY_DISPATCH_REPO/);
   });
 });

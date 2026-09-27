@@ -50,6 +50,7 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0040](0040-attachment-target-registry.md) | `files.target_type` is a registry, not a list | Accepted — revises [0011](0011-attachments-r2-s3-storage.md) §3 |
 | [0041](0041-an-extension-that-wrote-data-must-be-present-to-serve-it.md) | An extension that wrote data must be present to serve it | Accepted — revises the loader's failure policy (EE-002) |
 | [0042](0042-layered-verification-and-the-loop-contract.md) | Layered verification, a machine-picked next task, and the loop contract | Accepted |
+| [0043](0043-the-deploy-runs-on-a-runner-on-the-server.md) | The deploy runs on a runner on the server, started from the overlay's private repository | Accepted |
 
 > Rows 0024–0027 were missing until 2026-08-10 (OPH-242): four ADRs had landed
 > without an index line. 0028 was held as a **reserved** row while OPH-246 was

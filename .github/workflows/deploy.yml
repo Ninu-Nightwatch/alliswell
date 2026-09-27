@@ -6,6 +6,12 @@ name: Deploy
 # runnable by hand (Actions ▸ Deploy ▸ Run workflow) to redeploy an existing tag
 # without minting a version — the same path, so a manual redeploy is never a
 # different, less-tested procedure.
+#
+# It can also be called from ANOTHER repository whose runner lives on the
+# server (ADR-0043): the caller names this repository and the runner's labels,
+# and passes the secrets by name. Inside a called workflow `github.repository`
+# and `vars` are the CALLER's — which is why the repository being deployed is
+# an input and never read from the context.
 on:
   workflow_call:
     inputs:
@@ -13,6 +19,33 @@ on:
         description: The tag to deploy.
         required: true
         type: string
+      runner:
+        description: Where the job runs, as JSON for runs-on — GitHub's runner unless a caller names its own.
+        required: false
+        type: string
+        default: '"ubuntu-latest"'
+      core_repository:
+        description: owner/name of the repository whose tag is deployed; empty means this one.
+        required: false
+        type: string
+        default: ""
+    # Named so a caller in another owner's account can pass them one by one
+    # (`secrets: inherit` stops at the account boundary).
+    secrets:
+      DEPLOY_SSH_KEY:
+        required: false
+      DEPLOY_SSH_HOST:
+        required: false
+      DEPLOY_SSH_USER:
+        required: false
+      DEPLOY_OVERLAY_REPO:
+        required: false
+      DEPLOY_OVERLAY_TOKEN:
+        required: false
+      DEPLOY_OVERLAY_LICENSE:
+        required: false
+      DEPLOY_OVERLAY_ENV_SECRET:
+        required: false
   workflow_dispatch:
     inputs:
       ref:
@@ -30,7 +63,8 @@ jobs:
     # Configured only on the upstream repo, so forks and clones can run
     # everything else without ever touching someone's server.
     if: vars.DEPLOY_ENABLED == 'true'
-    runs-on: ubuntu-latest
+    # A hand-run dispatch has no `runner` input; `||` keeps it on GitHub's.
+    runs-on: ${{ fromJSON(inputs.runner || '"ubuntu-latest"') }}
     timeout-minutes: 25
 
     env:
@@ -43,9 +77,10 @@ jobs:
       # Optional private overlay (the extension seam of src/lib/ee.js, deployed).
       # Empty repo slug = this instance runs the plain build and every overlay
       # stage below is skipped, byte for byte as before these steps existed.
-      # The canonical public URL of THIS repository. Sent so the server's
-      # `origin` can be normalised to it before fetching — see below.
-      CORE_URL: https://github.com/${{ github.repository }}.git
+      # The canonical public URL of the repository being deployed. Sent so the
+      # server's `origin` can be normalised to it before fetching — see below.
+      CORE_REPO: ${{ inputs.core_repository || github.repository }}
+      CORE_URL: https://github.com/${{ inputs.core_repository || github.repository }}.git
       OVERLAY_REPO: ${{ secrets.DEPLOY_OVERLAY_REPO }}
       OVERLAY_REF: ${{ vars.DEPLOY_OVERLAY_REF || 'main' }}
       WILDCARD_ALIAS: ${{ vars.DEPLOY_WILDCARD_ALIAS }}
@@ -53,6 +88,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          repository: ${{ inputs.core_repository || github.repository }}
           ref: ${{ inputs.ref }}
 
       - uses: subosito/flutter-action@v2
@@ -65,6 +101,22 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      # ADR-0043: the ref must be a release — a version tag of the repository,
+      # or a commit its `main` already contains — before ANY of its code runs.
+      # Nothing above executes the checkout (installing the SDKs only reads
+      # it); the builds below do, and a pull request's head must never reach
+      # them on a runner that holds the server's key. Read from the workflow's
+      # own commit, like the overlay gate below, so an old tag meets today's rule.
+      - name: Check the ref is a release
+        env:
+          REF: ${{ inputs.ref }}
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW_SHA: ${{ job.workflow_sha || github.workflow_sha }}
+        run: |
+          git fetch --quiet --depth=1 origin "$WORKFLOW_SHA"
+          git show "$WORKFLOW_SHA:scripts/deploy/check-ref.mjs" > "$RUNNER_TEMP/check-ref.mjs"
+          node "$RUNNER_TEMP/check-ref.mjs"
 
       # OPH-345: the overlay's own CI decides whether it ships. The core half of
       # this deploy already passed release.yml's gate; the overlay was fetched
@@ -82,13 +134,22 @@ jobs:
       # own commit, not from the tag being deployed: a hand-run redeploy of an
       # older tag meets the gate this file promises instead of failing on a
       # file that tag never had.
+      #
+      # `job.workflow_sha` is THIS file's commit even when another repository
+      # calls it; `github.workflow_sha` is then the caller's, which this
+      # checkout does not have.
+      #
+      # The token: in the overlay's own repository (ADR-0043) the job's token
+      # already reads it — contents and Actions runs — so no long-lived
+      # credential is needed there. Anywhere else the secret is required, and
+      # the gate refuses by name without it.
       - name: Check the overlay's CI
         id: overlay_ci
         if: env.OVERLAY_REPO != ''
         env:
-          OVERLAY_TOKEN: ${{ secrets.DEPLOY_OVERLAY_TOKEN }}
+          OVERLAY_TOKEN: ${{ secrets.DEPLOY_OVERLAY_TOKEN || (github.repository == secrets.DEPLOY_OVERLAY_REPO && github.token || '') }}
           OVERLAY_CI_WORKFLOW: ${{ vars.DEPLOY_OVERLAY_CI_WORKFLOW || 'EE CI' }}
-          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          WORKFLOW_SHA: ${{ job.workflow_sha || github.workflow_sha }}
         run: |
           git fetch --quiet --depth=1 origin "$WORKFLOW_SHA"
           git show "$WORKFLOW_SHA:scripts/deploy/overlay-ci.mjs" > "$RUNNER_TEMP/overlay-ci.mjs"
@@ -115,9 +176,14 @@ jobs:
       # (EE-150). Without it the build falls back to copying PNGs under `.jpg`
       # names — which is the exact bug EE-150 fixed, and here it would ship: the
       # size gate lives in CI, and this workflow never runs it.
+      # A runner on the server has no password-less sudo (ADR-0043): the owner
+      # installs ImageMagick there once, and this step only installs it where
+      # it is missing — GitHub's runner.
       - name: Build the landing site
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+          if ! command -v magick >/dev/null && ! command -v convert >/dev/null; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+          fi
           npm ci
           npm run landing:build
 
@@ -155,7 +221,7 @@ jobs:
       - name: Prepare the overlay payload
         if: env.OVERLAY_REPO != ''
         env:
-          OVERLAY_TOKEN: ${{ secrets.DEPLOY_OVERLAY_TOKEN }}
+          OVERLAY_TOKEN: ${{ secrets.DEPLOY_OVERLAY_TOKEN || (github.repository == secrets.DEPLOY_OVERLAY_REPO && github.token || '') }}
           OVERLAY_LICENSE: ${{ secrets.DEPLOY_OVERLAY_LICENSE }}
           OVERLAY_ENV: ${{ vars.DEPLOY_OVERLAY_ENV }}
           OVERLAY_ENV_SECRET: ${{ secrets.DEPLOY_OVERLAY_ENV_SECRET }}
@@ -874,3 +940,11 @@ jobs:
             fi
           done
           exit $fail
+
+      # GitHub's runner dies with the job, and the key "Set up SSH" wrote dies
+      # with it. A runner that lives on the server keeps its disk (ADR-0043):
+      # without this the server's deploy key would outlive every deploy, on the
+      # server itself, whatever the job's outcome.
+      - name: Remove the deploy key
+        if: always()
+        run: rm -f ~/.ssh/id_deploy

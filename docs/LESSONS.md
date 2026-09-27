@@ -12,6 +12,9 @@
 - **DERS** `v*` etiketi prod deploy'unu tetikler → atlanan sürüm sonradan etiketlenmez (yeninin ardından eskiyi deploy eder); sonraki sürüm onu kapsar.
 
 ## deploy-prod — dağıtım kapısı, web önbelleği, yedek
+- **KARAR** Dağıtım sunucudaki runner'da koşar: runner uzantının private deposuna kayıtlı (`alliswell-deploy`), public depoya asla; `deploy.yml` tek uygulama, etiket `vars.DEPLOY_VIA_OVERLAY` ile oradaki Deploy'u başlatır (ADR-0043).
+- **DERS** Sunucuya ikinci runner kurulursa yolu `/actions-runner/` içermeli: `deploy.yml`'in Node araması yalnız onu atlar, başka ad v1.4.0'daki argon2/node24 kırılmasını geri getirir (`/opt/actions-runner` başka bir projenin).
+- **DERS** Sunucunun SSH giriş uyarısı her oturumda stdout'a yanıt basar → public dağıtım kayıtlarına sahibin mesajlaşma kimliği düştü; adres yalnız bir secret'ın değerine eşit olduğu için `***`. Kayıtları okunmayacak sanma, ne bastığını ölç.
 - **KARAR** Uzantılı dağıtım yalnız uzantı CI'ının (`DEPLOY_OVERLAY_CI_WORKFLOW`, varsayılan `EE CI`) en yeni koşusu yeşilse çıkar; sunucuya denetlenen SHA gider, koşu okunamazsa durur — kırmızı uzantı commit'i sunucuya çıkamaz.
 - **DERS** Flutter web adları hash'siz (`main.dart.js`, `flutter_bootstrap.js`) → `immutable` tarayıcıyı bir yıl eski uygulamada tuttu; `/app/` `no-cache, must-revalidate`; "deploy başarılı" ≠ yeni kod → servis edileni ölç.
 - **DERS** `mysqldump` `--no-tablespaces`'sız "Error:" basar ama 0 ile tam dump üretir; takvim/AI/TOTP sırları `.env` anahtarlarıyla şifreli → başka anahtarla geri yükleme kusursuz görünür, 2FA'lıları kilitler.

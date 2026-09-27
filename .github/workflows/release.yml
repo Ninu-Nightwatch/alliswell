@@ -172,10 +172,39 @@ jobs:
   # Ship the freshly-released tag to the maintainer's own instance. The steps
   # live in deploy.yml so the exact same path is available by hand (Actions ▸
   # Deploy ▸ Run workflow) when a redeploy is needed without cutting a version.
+  #
+  # Exactly one of the next two jobs runs. With `vars.DEPLOY_VIA_OVERLAY` set to
+  # 'true', the overlay's private repository (`secrets.DEPLOY_OVERLAY_REPO`)
+  # runs deploy.yml from its own Deploy workflow, on a runner that lives on the
+  # server (ADR-0043) — a public repository must never hold such a runner, so
+  # this one only starts it there. Otherwise deploy.yml runs here on GitHub's
+  # runner, exactly as before. The repository's name stays a secret either way.
   deploy:
     name: Deploy
     needs: [release, images]
+    if: vars.DEPLOY_VIA_OVERLAY != 'true'
     uses: ./.github/workflows/deploy.yml
     with:
       ref: ${{ github.ref_name }}
     secrets: inherit
+
+  deploy-dispatch:
+    name: Deploy (on the server's runner)
+    needs: [release, images]
+    if: vars.DEPLOY_VIA_OVERLAY == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # A fine-grained token scoped to that one repository with Actions: write —
+      # enough to start a workflow there, nothing else.
+      - name: Start the deploy in the overlay's repository
+        env:
+          GH_TOKEN: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}
+          REPO: ${{ secrets.DEPLOY_OVERLAY_REPO }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          test -n "$GH_TOKEN" || { echo "::error::secrets.DEPLOY_DISPATCH_TOKEN is not set — nothing can start the deploy"; exit 1; }
+          test -n "$REPO" || { echo "::error::secrets.DEPLOY_OVERLAY_REPO is not set — there is no repository to start the deploy in"; exit 1; }
+          gh workflow run deploy.yml -R "$REPO" -f ref="$TAG"
+          echo "### Deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "Started for $TAG in the overlay's repository — follow it there: Actions ▸ Deploy." >> "$GITHUB_STEP_SUMMARY"
