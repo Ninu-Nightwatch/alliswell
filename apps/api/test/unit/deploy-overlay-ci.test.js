@@ -366,7 +366,12 @@ describe('the deploy can run on the server’s own runner without widening what 
     const dispatch = release.slice(at(release, "if: vars.DEPLOY_VIA_OVERLAY == 'true'"));
     expect(dispatch).toContain('REPO: ${{ secrets.DEPLOY_OVERLAY_REPO }}');
     expect(dispatch).toContain('GH_TOKEN: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}');
-    expect(dispatch).toContain('gh workflow run deploy.yml -R "$REPO" -f ref="$TAG"');
+    // The REST dispatch needs Actions: write and nothing more; `gh workflow run`
+    // first reads the default branch over GraphQL, which that token cannot.
+    expect(dispatch).toContain(
+      'gh api -X POST "repos/$REPO/actions/workflows/deploy.yml/dispatches" \\\n            -f ref=main -f "inputs[ref]=$TAG"',
+    );
+    expect(dispatch).not.toMatch(/^\s+gh workflow run/m); // a command line — the comment may name it
     expect(release).not.toMatch(/vars\.DEPLOY_OVERLAY_REPO|vars\.DEPLOY_DISPATCH_REPO/);
   });
 });

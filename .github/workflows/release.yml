@@ -196,7 +196,10 @@ jobs:
     timeout-minutes: 5
     steps:
       # A fine-grained token scoped to that one repository with Actions: write —
-      # enough to start a workflow there, nothing else.
+      # enough to start a workflow there, nothing else. So the dispatch is the
+      # REST call itself: `gh workflow run` first asks GraphQL for the default
+      # branch, which that token cannot read ("Resource not accessible by
+      # personal access token (repository.defaultBranchRef)" — v1.14.0's run).
       - name: Start the deploy in the overlay's repository
         env:
           GH_TOKEN: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}
@@ -205,6 +208,7 @@ jobs:
         run: |
           test -n "$GH_TOKEN" || { echo "::error::secrets.DEPLOY_DISPATCH_TOKEN is not set — nothing can start the deploy"; exit 1; }
           test -n "$REPO" || { echo "::error::secrets.DEPLOY_OVERLAY_REPO is not set — there is no repository to start the deploy in"; exit 1; }
-          gh workflow run deploy.yml -R "$REPO" -f ref="$TAG"
+          gh api -X POST "repos/$REPO/actions/workflows/deploy.yml/dispatches" \
+            -f ref=main -f "inputs[ref]=$TAG"
           echo "### Deploy" >> "$GITHUB_STEP_SUMMARY"
           echo "Started for $TAG in the overlay's repository — follow it there: Actions ▸ Deploy." >> "$GITHUB_STEP_SUMMARY"
