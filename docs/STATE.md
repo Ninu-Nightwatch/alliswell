@@ -17,20 +17,19 @@ commit/CHANGELOG/DEVICE-CHECKS'te.
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | GitHub issue turu kapandı (2026-09-26, `3fcd67b`; CI bir sonraki turda okunur). Epic 31–33 ve OPH-351/352 `main`'de, v1.14.0 adayı; canlıdaki son sürüm **v1.13.0** (2026-09-19). |
+| Current phase            | **v1.14.0 canlıda** (2026-09-28, `55efb0b` + uzantı `0c1e35f`) — sunucudaki runner'dan ilk deploy (ADR-0043). Uzantının sunumu bugün; sıra uzantı deposunun `docs/DEMO.md` §A.3'ünde. |
 | Current epic             | Açık epic yok.                                                                               |
 | ➡️ **Next task**         | **BACKLOG BOŞ** — kod kuyruğu boş: TASKS'taki üç iş (OPH-142, OPH-273, OPH-274) ⏸️ sahibin adımını bekliyor; sıradaki adım sahibin (aşağıda). Uzantının işaretçisi kendi deposunda. |
 | Last completed           | OPH-352 — web'de alarm düzeltme sayfası ölü `app-settings:` sekmesi açmıyor; tarayıcının üç ret durumu ayrı (GitHub #19). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
-1. **v1.14.0 etiketi + deploy** (Epic 31+32+33). Sıra uzantı deposunun sunum runbook'unda
-   (`docs/DEMO.md` §A); uzantının sunumu **2026-09-28**.
-2. **Dağıtım sunucudaki runner'a geçiyor (ADR-0043)** — runner `alliswell-prod` sunucuda kurulu ve
-   çevrimiçi, uzantı deposunun secret/değişkenleri tamam. Kalan: bu depoya `DEPLOY_DISPATCH_TOKEN`
-   (fine-grained, yalnız uzantı deposu, Actions: Read and write) ve `vars.DEPLOY_VIA_OVERLAY=true`;
-   ilk koşu canlıdaki çiftle (v1.13.0 + uzantı `e4cf2dd`, uzantıda `DEPLOY_OVERLAY_REF`), sunum
-   için `a12ce24`. Bu yolda `DEPLOY_OVERLAY_TOKEN` gerekmez; `EE_REQUIRED=true`'yu hat kendisi yazar.
+1. **Sunum (2026-09-28)** — v1.14.0 canlıda; kalan sıra uzantı deposunun `docs/DEMO.md` §A.3'ünde
+   (demo tohumu → hazır olma → senaryo).
+2. **2026-10-01'den sonra (dağıtım runner'da, ADR-0043):** uzantıda `DEPLOY_OVERLAY_REF`'i sil
+   (şimdi `0c1e35f`'e sabit; silinince `main`) ve `main`'in EE CI'ını yeniden çalıştır. Bir sürüm
+   bu yoldan tam otomatik çıktıktan sonra: eski deploy anahtarı + bu depodaki `DEPLOY_SSH_*`
+   secret'ları emekliye, `diagnose.yml` runner'a.
 3. **`main` için branch protection** — Settings › Branches, public depoda ücretsiz tek kural
    (2026-09-26: korumasız).
 4. **OPH-273** — Cloudflare: `/app/*` için Browser Cache TTL → *Respect Existing Headers* ya da
