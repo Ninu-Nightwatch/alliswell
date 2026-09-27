@@ -1,4 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'vitest';
@@ -323,6 +326,38 @@ describe('the deploy can run on the server’s own runner without widening what 
     for (const index of sudo) {
       expect(index).toBeGreaterThan(guard);
       expect(index).toBeLessThan(end);
+    }
+  });
+
+  test('every deploy-managed env line is applied — the last one too — and an append never joins a line', () => {
+    // Not a source read: the server's own block, cut out of deploy.yml and run
+    // by bash against a .env, on the two shapes that broke it. The payload is
+    // what "Prepare the overlay payload" hands over — `$(printf …)` has taken
+    // its final newline — and the .env's last line has no newline either.
+    const start = at(deploy, '          ENV_FILE="$APP_DIR/apps/api/.env"');
+    const closing = '\n          fi\n';
+    const end = deploy.indexOf(closing, at(deploy, 'echo "env keys reconciled:')) + closing.length;
+    const dir = mkdtempSync(join(tmpdir(), 'aw-env-'));
+    try {
+      mkdirSync(join(dir, 'apps/api'), { recursive: true });
+      const envFile = join(dir, 'apps/api/.env');
+      writeFileSync(envFile, 'DATABASE_PASSWORD=s3cret\nEE_REQUIRED=false');
+      const payload = 'EE_REQUIRED=true\nEE_BASE_DOMAIN=example.test';
+      const out = execFileSync('bash', ['-euo', 'pipefail', '-c', deploy.slice(start, end)], {
+        env: {
+          ...process.env,
+          APP_DIR: dir,
+          TAG: 'v0.0.0',
+          OVERLAY_ENV_B64: Buffer.from(payload).toString('base64'),
+        },
+        encoding: 'utf8',
+      });
+      expect(out).toContain('env keys reconciled: EE_REQUIRED EE_BASE_DOMAIN');
+      expect(readFileSync(envFile, 'utf8')).toBe(
+        'DATABASE_PASSWORD=s3cret\nEE_REQUIRED=true\nEE_BASE_DOMAIN=example.test\n',
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 

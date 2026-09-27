@@ -578,7 +578,12 @@ jobs:
             printf '%s' "$OVERLAY_ENV_B64" | base64 -d > /tmp/aw-env-lines.$$
             touched=""
             cp -a "$ENV_FILE" "$ENV_FILE.pre-$TAG"
-            while IFS= read -r line; do
+            # The payload arrives without its final newline — `$(printf …)`
+            # strips it — and `read` returns false on an unterminated last
+            # line. Without `|| [ -n "$line" ]` the LAST key was never applied:
+            # EE_REQUIRED=true alone was skipped on every deploy, silently
+            # ("env keys reconciled: (none)", found 2026-09-27).
+            while IFS= read -r line || [ -n "$line" ]; do
               case "$line" in ''|'#'*) continue ;; esac
               key=${line%%=*}
               # A malformed line must not become a key named after half a
@@ -599,6 +604,10 @@ jobs:
                   fs.writeFileSync(file, out);
                 ' "$ENV_FILE" "$key" "${line#*=}"
               else
+                # A .env whose last line has no newline would take the
+                # appended key into that line's value — a password followed
+                # by `EE_X=1`, and an API that no longer starts.
+                [ -z "$(tail -c1 "$ENV_FILE")" ] || printf '\n' >> "$ENV_FILE"
                 printf '%s\n' "$line" >> "$ENV_FILE"
               fi
               touched="$touched $key"
