@@ -7,6 +7,14 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ## [Unreleased]
 
+### Fixed
+
+- **After a release the web app loads the new version on the next visit (OPH-273).** The
+  edge in front of the site kept the app's code for four hours whatever the server said, so a
+  browser that had opened the app shortly before a release went on running the old one —
+  About showed the previous version. Every file under `/app` now reaches the browser with the
+  server's own `no-cache, must-revalidate`.
+
 ## [1.14.0] — 2026-09-28
 
 ### Added

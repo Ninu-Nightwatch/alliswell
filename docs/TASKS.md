@@ -37,26 +37,6 @@ kutuyu işaretle.)_
       already gates on the runtime grant, and the second "Critical Alerts" permission prompt +
       Settings toggle appear automatically.
 
-### OPH-273 — Canlıdaki tarayıcı bir yıl boyunca eski uygulamayı çalıştırıyordu (ACİL, sıra dışı) ⏸️ SAHİP
-
-_Origin tarafı 2026-08-17'de düzeldi (`apps/landing/public/.htaccess` ve `docker/web-nginx.conf`:
-`/app/` altı `no-cache, must-revalidate`). 2026-09-23 ölçümü: eski immutable kopya gitmiş, `.js`
-hâlâ `max-age=14400` — kalan yalnız aşağıdaki panel ayarı._
-
-- [ ] **AÇIK — Cloudflare kenarı, ve düzeltmesi panelde (agent'ın erişimi yok).** Ölçüm:
-      | Dosya | Cache-Control | cf-cache-status |
-      | --- | --- | --- |
-      | `version.json` | `no-cache, must-revalidate` | DYNAMIC (origin'e geçiyor) |
-      | `main.dart.js` | **`max-age=14400, must-revalidate`** | EXPIRED (içerik YENİ) |
-      | `flutter_bootstrap.js` | **`public, max-age=31536000, immutable`** | **HIT, age 445** |
-      İki ayrı Cloudflare davranışı: (1) `.js` CF'nin varsayılan önbelleklenen tipleri
-      arasında olduğu için tarayıcı TTL'ini kendi **4 saatine** yeniden yazıyor — origin ne
-      derse desin; (2) `flutter_bootstrap.js` kenarda **eski, yıllık-immutable** kopyasıyla
-      duruyor (`last-modified` dünkü deploy). **Sahibin yapması gerekenler:** `/app/*` için
-      cache **purge**, ve kalıcı çözüm olarak Browser Cache TTL → *Respect Existing Headers*
-      ya da `alliswell.space/app/*` için bypass eden bir Cache Rule.
-      _Not: purge yapılmasa bile durum yıldan 4 saate indi ve servis edilen kod yeni._
-
 ### OPH-274 — Notlar %100 markdown: rich text editör kaldırıldı, motor `markdown_forge` paketi oldu (ADR-0033, v1.7.0) ⏸️ SAHİP
 
 _Kod 2026-08-18'de kapandı (v1.7.0); motor bugün `apps/app/packages/markdown_forge` yolundan geliyor._
