@@ -73,3 +73,13 @@ What constrains it:
 - Deploys cost the server a few minutes of CPU and ~3 GB of memory for the Flutter build.
 - Follow-up once this path has shipped a release: retire the old key and `DEPLOY_SSH_*` secrets
   here, and move `diagnose.yml` (it still SSHes in from GitHub's runner) to the same runner.
+
+## Revision — 2026-09-30: the overlay's CI runs here too
+
+The organisation's Actions minutes ran out and paid minutes stay declined, so the owner moved the
+overlay's CI onto this same runner — the third alternative above, taken after all. Its objection
+is answered in the overlay repository, not waived: the CI's test services listen on loopback only,
+on ports the live services do not use, with a database and credentials of their own (a misrouted
+connection cannot reach live data), capped, first in line for the OOM killer, and removed after
+every run. The overlay's heavy benchmarks stay on GitHub's runners. One runner now serves the CI
+and the deploy in turn.
