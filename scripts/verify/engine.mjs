@@ -68,6 +68,17 @@ export function changedFiles(root, base = 'HEAD') {
   ].sort();
 }
 
+/**
+ * The changed paths that are still on disk. A deleted or renamed-away file IS
+ * a change — it decides which steps run (a Dart file gone still means the
+ * analyzer must look again) — but it is not something a command can be pointed
+ * at: `flutter analyze <deleted file>` stops with "it does not exist on disk"
+ * and the whole step goes red over a file that was meant to go.
+ */
+export function presentFiles(root, files) {
+  return files.filter((file) => existsSync(join(root, file)));
+}
+
 // ── What may leave the machine ───────────────────────────────────────────────
 //
 // Only what git tracks, or would track (untracked and not ignored) — and even then not a
@@ -449,8 +460,10 @@ export async function runCli(config) {
       skipped.push([step.name, 'nothing it checks changed']);
       continue;
     }
-    // A command may depend on the change (lint the changed files); settle it once, here.
-    plan.push({ ...step, cmd: typeof step.cmd === 'function' ? step.cmd(files) : step.cmd });
+    // A command may depend on the change (lint the changed files); settle it once, here —
+    // pointed at the files that still exist (`presentFiles`).
+    const present = presentFiles(config.repoRoot, files);
+    plan.push({ ...step, cmd: typeof step.cmd === 'function' ? step.cmd(present) : step.cmd });
   }
   // Steps that need files the default payload leaves out (a changed Dart file for the
   // formatter, the screenshots for the landing build) add them for this run only.
@@ -458,7 +471,7 @@ export async function runCli(config) {
     ...config.payload,
     include: [
       ...(config.payload.include || []),
-      ...plan.flatMap((s) => (s.needs ? s.needs(files) : [])),
+      ...plan.flatMap((s) => (s.needs ? s.needs(presentFiles(config.repoRoot, files)) : [])),
     ],
   };
 

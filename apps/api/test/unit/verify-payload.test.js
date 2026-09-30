@@ -5,7 +5,12 @@ import { dirname, join } from 'node:path';
 
 import { describe, expect, test } from 'vitest';
 
-import { payloadFiles, secretShaped } from '../../../../scripts/verify/engine.mjs';
+import {
+  changedFiles,
+  payloadFiles,
+  presentFiles,
+  secretShaped,
+} from '../../../../scripts/verify/engine.mjs';
 
 /// ADR-0042 — `verify:batch` runs the suites on a remote sandbox against a mirror
 /// of the tree. What may leave the machine is decided here: only what git tracks
@@ -93,5 +98,31 @@ describe('payloadFiles', () => {
       'ee/docs/screenshots/s.png',
       'ee/new.txt',
     ]);
+  });
+});
+
+describe('presentFiles', () => {
+  test('a deleted file is a change, but nothing a command can be pointed at', () => {
+    const root = mkdtempSync(join(tmpdir(), 'verify-present-'));
+    try {
+      const run = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' });
+      run('init', '-q');
+      run('config', 'user.email', 'verify@example.com');
+      run('config', 'user.name', 'verify');
+      writeFileSync(join(root, 'gone.dart'), 'void main() {}\n');
+      writeFileSync(join(root, 'kept.dart'), 'void main() {}\n');
+      run('add', '.');
+      run('commit', '-q', '-m', 'seed');
+      rmSync(join(root, 'gone.dart'));
+      writeFileSync(join(root, 'kept.dart'), 'void main() { print(1); }\n');
+
+      const changed = changedFiles(root);
+      // The deletion still decides which steps run…
+      expect(changed).toEqual(['gone.dart', 'kept.dart']);
+      // …but only what exists reaches a command (`flutter analyze <files>`).
+      expect(presentFiles(root, changed)).toEqual(['kept.dart']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
