@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/tasks/data/task_store.dart';
+import '../features/tasks/providers.dart'
+    show taskScopeProvider, taskStoreProvider;
 import '../features/workspaces/workspaces.dart';
 import '../sync/providers.dart';
 import 'search.dart';
@@ -43,16 +45,32 @@ final homeSearchResultsProvider =
     FutureProvider.autoDispose<HomeSearchResults?>((ref) async {
       final query = ref.watch(homeSearchQueryProvider).trim();
       if (query.isEmpty) return null;
-      final workspaces = await ref.watch(workspacesProvider.future);
-      if (workspaces.isEmpty) return null;
+      final scope = await ref.watch(taskScopeProvider.future);
+      if (scope == null) return null;
       final service = ref.watch(searchServiceProvider);
-      final workspaceId = workspaces.first.id;
-      final tasks = await service.searchTasks(
-        workspaceId,
-        query,
-        statuses: [...kPlanningStatuses, 'inbox'],
-      );
-      final events = await service.searchEvents(workspaceId, query);
+      const statuses = [...kPlanningStatuses, 'inbox'];
+      // Home searches what Home shows: one workspace for a person on their
+      // own; a member's own work across every workspace they are in.
+      final tasks = <SearchHit>[
+        for (final workspaceId in scope.workspaceIds)
+          ...await service.searchTasks(
+            workspaceId,
+            query,
+            statuses: statuses,
+          ),
+      ];
+      if (scope.mineFor != null) {
+        final mine = await ref.read(taskStoreProvider).idsIn(scope, statuses);
+        tasks.retainWhere((hit) => mine.contains(hit.id));
+        // Each workspace came back ranked; together they rank by tier again
+        // (`sort` is stable, so a workspace's own order survives inside one).
+        tasks.sort((a, b) => a.tier.compareTo(b.tier));
+      }
+      // The calendar is a person's own; in an organisation's workspaces there
+      // is none to search (it is not connected there).
+      final events = scope.mineFor != null
+          ? const <SearchHit>[]
+          : await service.searchEvents(scope.workspaceIds.single, query);
       return HomeSearchResults(tasks: tasks, events: events);
     });
 
@@ -61,9 +79,9 @@ final projectsSearchResultsProvider =
     FutureProvider.autoDispose<List<SearchHit>?>((ref) async {
       final query = ref.watch(projectsSearchQueryProvider).trim();
       if (query.isEmpty) return null;
-      final workspaces = await ref.watch(workspacesProvider.future);
-      if (workspaces.isEmpty) return null;
+      final workspaceId = await ref.watch(activeWorkspaceIdProvider.future);
+      if (workspaceId == null) return null;
       return ref
           .watch(searchServiceProvider)
-          .searchProjects(workspaces.first.id, query);
+          .searchProjects(workspaceId, query);
     });

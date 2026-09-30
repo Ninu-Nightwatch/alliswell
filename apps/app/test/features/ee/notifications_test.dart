@@ -76,6 +76,20 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         databaseProvider.overrideWithValue(db),
+        // The list the current workspace comes from, so everything derived
+        // from it — which workspaces sync, and so what the badge counts —
+        // agrees with the override below (EE-296).
+        workspacesProvider.overrideWith(
+          (ref) async => const [
+            WorkspaceSummary(
+              id: ws,
+              name: 'Saha',
+              slug: 'saha',
+              colorRgb: '#2563EB',
+              role: 'member',
+            ),
+          ],
+        ),
         currentWorkspaceProvider.overrideWithValue(
           const AsyncValue.data(
             WorkspaceSummary(
@@ -300,13 +314,66 @@ void main() {
         data: notification('N3', readAt: '2026-08-24T11:00:00Z'),
       );
 
-      final count = await NotificationStore(db).markAllRead();
+      final count = await NotificationStore(db).markAllRead(const [ws]);
 
       expect(count, 2);
       final queued = await db.select(db.pendingMutations).get();
       // The server has no bulk verb, and inventing a client-only one would make
       // the two paths disagree the first time a push failed halfway.
       expect(queued, hasLength(2));
+    },
+  );
+
+  test(
+    "EE-296: the centre and the badge gather every unit this device syncs",
+    () async {
+      // A member of an organisation syncs each of their units. What happened
+      // to them in one unit is news whichever unit is on screen: a request
+      // assigned in another unit reached the centre only once they switched.
+      const other = 'W2';
+      await pull('N1', data: notification('N1'));
+      await applyPulledChanges(
+        db,
+        workspaceId: other,
+        changes: [
+          SyncChange(
+            revision: 1,
+            entityType: 'ee_notification',
+            entityId: 'N2',
+            operation: 'upsert',
+            data: {
+              ...notification('N2', createdAt: '2026-08-24T12:00:00.000Z'),
+              'workspaceId': other,
+            },
+          ),
+        ],
+        toRevision: 1,
+      );
+      final container = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWithValue(db),
+          syncWorkspaceIdsProvider.overrideWithValue(const [ws, other]),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final rows = await readCentre(container);
+      expect([for (final r in rows) r.id], ['N2', 'N1']);
+      final badge = container.listen(
+        unreadNotificationCountProvider,
+        (_, _) {},
+        fireImmediately: true,
+      );
+      addTearDown(badge.close);
+      expect(await container.read(unreadNotificationCountProvider.future), 2);
+
+      expect(
+        await NotificationStore(db).markAllRead(const [ws, other]),
+        2,
+      );
+      final queued = await db.select(db.pendingMutations).get();
+      // Each mark goes out through its own workspace's outbox.
+      expect({for (final m in queued) m.workspaceId}, {ws, other});
     },
   );
 

@@ -49,17 +49,14 @@ final eeKbAnswersForProvider = FutureProvider.autoDispose
 /// Where this person's drafts live (EE-216, EE-243): their OWN workspace.
 ///
 /// The server refuses a draft anywhere else — a unit's workspace would carry
-/// it to every agent in the unit — and the membership role on `/me` names the
-/// right one: team workspaces are owned by the team's service identity, so
-/// `owner` marks exactly the person's own space. Null when there is none to
-/// name, and the form then says a draft cannot be kept on this device.
-final draftWorkspaceIdProvider = Provider<String?>((ref) {
-  final workspaces = ref.watch(workspacesProvider).value ?? const [];
-  for (final workspace in workspaces) {
-    if (workspace.role == 'owner') return workspace.id;
-  }
-  return null;
-});
+/// it to every agent in the unit. `/me` says which workspace the account OWNS
+/// ([WorkspaceSummary.owned], EE-296); the membership role cannot, because an
+/// organisation's owner may hold `owner` in its workspaces too, and the first
+/// such row sent their drafts to a unit. Null when there is none to name, and
+/// the form then says a draft cannot be kept on this device.
+final draftWorkspaceIdProvider = Provider<String?>(
+  (ref) => ref.watch(ownWorkspaceProvider)?.id,
+);
 
 /// Draft writes still in a workspace's outbox.
 final pendingDraftWritesProvider = StreamProvider.family<int, String>((

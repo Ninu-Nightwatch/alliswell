@@ -23,7 +23,7 @@ final projectsShowArchivedProvider =
 final projectStoreProvider = Provider<ProjectStore>(
   (ref) => ProjectStore(
     ref.watch(databaseProvider),
-    () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+    () => pokeSync(ref),
   ),
 );
 
@@ -35,28 +35,47 @@ final projectsControllerProvider =
     );
 
 /// Projects keyed by id, for O(1) name+color lookups on task rows — the
-/// project badge (OPH-104) resolves a task's project without a per-row query.
+/// project badge (OPH-104) resolves a task's project without a per-row query —
+/// and for the widget's colours and lists (OPH-336).
+///
+/// Every project of every synced workspace, not only the one selected: in an
+/// organisation a row on Home may come from any unit the person is in, and its
+/// badge must resolve there too. On one's own it is the same one workspace.
 final projectsByIdProvider = Provider<Map<String, Project>>((ref) {
-  final projects = ref.watch(projectsControllerProvider).value ?? const [];
+  final projects = ref.watch(listedProjectsProvider).value ?? const [];
   return {for (final project in projects) project.id: project};
+});
+
+/// The projects of ONE workspace — what a task's own project field offers: a
+/// task opened from Home may live in a unit other than the one selected, and
+/// a project from another workspace cannot be its project (EE-296).
+final workspaceProjectsProvider = StreamProvider.family<List<Project>, String>(
+  (ref, workspaceId) => ref.watch(projectStoreProvider).watchAll(workspaceId),
+);
+
+/// The projects behind [projectsByIdProvider], in list order.
+final listedProjectsProvider = StreamProvider<List<Project>>((ref) {
+  final workspaceIds = ref.watch(syncWorkspaceIdsProvider);
+  if (workspaceIds.isEmpty) return Stream.value(const <Project>[]);
+  return ref.watch(projectStoreProvider).watchAllIn(workspaceIds);
 });
 
 class ProjectsController extends StreamNotifier<List<Project>> {
   @override
   Stream<List<Project>> build() async* {
     ref.watch(syncEngineProvider);
-    final workspaces = await ref.watch(workspacesProvider.future);
-    if (workspaces.isEmpty) {
+    final workspaceId = await ref.watch(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) {
       yield const [];
       return;
     }
-    yield* ref.watch(projectStoreProvider).watchAll(workspaces.first.id);
+    yield* ref.watch(projectStoreProvider).watchAll(workspaceId);
   }
 
   Future<String> _workspaceId() async {
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty) throw StateError('No workspace available');
-    return workspaces.first.id;
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) throw StateError('No workspace available');
+    return workspaceId;
   }
 
   /// Returns the new project's id so callers (the picker's inline create,

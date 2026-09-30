@@ -9,6 +9,7 @@ import '../features/auth/data/auth_api.dart';
 import '../features/auth/data/token_storage.dart';
 import '../features/auth/data/secure_secret_store.dart';
 import '../features/auth/data/auth_interceptor.dart';
+import '../features/tasks/data/task_scope.dart';
 import '../features/widgets/widget_bridge.dart';
 import '../features/widgets/widget_host.dart';
 import '../i18n/i18n.dart';
@@ -44,8 +45,13 @@ import 'scheduler.dart';
 ///    `.tr()`, and an unbooted catalogue renders keys — so the identity a
 ///    notification is scheduled under would differ from the one the live app
 ///    produces, and the same alarm would be scheduled twice under two ids.
-/// 2. The workspace comes from `sync_states`, never `/me`: that is a network
-///    call, and offline it fails into "sync nothing".
+/// 2. The workspaces come from `sync_states` — every row, one per workspace
+///    the app keeps in sync (a member of an organisation syncs all of their
+///    units) — never from `/me`: that is a network call, and offline it fails
+///    into "sync nothing". WHOSE alarms and widget come from the scope the app
+///    last built its lists from ([recallTaskScope]); a replica no build of
+///    that kind has run on yet is read the way the build before it read it,
+///    one workspace, whole.
 /// 3. The base URL is read from [localKv] DIRECTLY. `PersistedChoice` answers
 ///    its fallback synchronously and hydrates after — in a process this short
 ///    that fallback IS the answer, and a self-hoster would be sent to the
@@ -68,9 +74,13 @@ Future<void> runHeadlessRefresh({
 
   final db = openDatabase?.call() ?? AwDatabase(openAwConnection());
   try {
-    final state = await db.select(db.syncStates).getSingleOrNull();
-    final workspaceId = state?.workspaceId;
-    if (workspaceId == null) return;
+    final synced = [
+      for (final state in await db.select(db.syncStates).get())
+        state.workspaceId,
+    ];
+    if (synced.isEmpty) return;
+    final remembered = await recallTaskScope(syncedWorkspaceIds: synced);
+    TaskScope? scope = remembered?.scope ?? TaskScope.workspace(synced.first);
 
     try {
       final baseUrl =
@@ -91,6 +101,13 @@ Future<void> runHeadlessRefresh({
         session = null;
       }
       if (session == null) return;
+      if (remembered != null && remembered.userId != session.user.id) {
+        // Left by an account that is no longer the one signed in. Its lists
+        // are not this person's: nothing is scheduled or drawn from them, and
+        // the app builds this person's own the next time it runs.
+        scope = null;
+        return;
+      }
 
       final dio = Dio(BaseOptions(baseUrl: baseUrl));
       dio.interceptors.add(
@@ -100,22 +117,23 @@ Future<void> runHeadlessRefresh({
         ),
       );
 
-      final engine = SyncEngine(
-        db: db,
-        api: SyncApi(dio),
-        workspaceId: workspaceId,
-      );
-      try {
-        await engine.syncNow();
-      } on Object {
-        // Offline, or the server said no. The replica still holds whatever it
-        // held, and scheduling from stale rows beats scheduling nothing: this
-        // turn exists because the app has not run, so those rows may be the
-        // only ones the device will have until it does.
+      final api = SyncApi(dio);
+      for (final workspaceId in synced) {
+        final engine = SyncEngine(db: db, api: api, workspaceId: workspaceId);
+        try {
+          await engine.syncNow();
+        } on Object {
+          // Offline, or the server said no. The replica still holds whatever
+          // it held, and scheduling from stale rows beats scheduling nothing:
+          // this turn exists because the app has not run, so those rows may
+          // be the only ones the device will have until it does. One
+          // workspace failing is not a reason to leave the next one stale.
+        } finally {
+          engine.dispose();
+        }
       }
-      engine.dispose();
 
-      final alarms = await ReminderStore(db, () {}).readAlarms(workspaceId);
+      final alarms = await ReminderStore(db, () {}).readAlarmsIn(scope);
       final scheduler = NotificationScheduler(
         gateway: openGateway?.call() ?? LocalNotificationsGateway(),
         // Nothing streams here; the set is read once and applied once.
@@ -129,12 +147,14 @@ Future<void> runHeadlessRefresh({
       // no Keychain), offline, a server that said no — ends by redrawing the
       // widget from the replica. The rows may be stale; the DAY is not, and at
       // midnight the day is what moved. Never throws (see the function).
-      await publishWidgetFromReplica(
-        db,
-        workspaceId: workspaceId,
-        now: DateTime.now(),
-        host: widgetHost,
-      );
+      if (scope != null) {
+        await publishWidgetFromReplica(
+          db,
+          scope: scope,
+          now: DateTime.now(),
+          host: widgetHost,
+        );
+      }
     }
   } finally {
     // Always: a background isolate that leaves the file open is the second

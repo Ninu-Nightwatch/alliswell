@@ -49,6 +49,9 @@ void main() {
     // before it, too. Deleting the v29 step left the suite green; that is how
     // this was found, and it had been true for ten versions.
     //
+    // v37 (EE-296): who made a task. `tickets` and `task_assignments` go
+    // whole below, and their v37 column and index go with them.
+    await db.customStatement('ALTER TABLE tasks DROP COLUMN created_by');
     // Children before parents: drift opens with foreign keys on.
     for (final drop in [
       'DROP TABLE ticket_drafts', // v32
@@ -374,6 +377,12 @@ void main() {
       // v36 (OPH-350): the desk's words — v34's shape, proven by the v24
       // test below.
       await db.customSelect('SELECT tag_names FROM tickets').get();
+      // v37 (EE-296): who made a task — the server's answer, so a row from
+      // before it is empty until the next pull brings it.
+      final made = await db
+          .customSelect("SELECT created_by FROM tasks WHERE id = 'T1'")
+          .getSingle();
+      expect(made.data['created_by'], null);
       // v35 (OPH-349): the machine a draft is about. From v1 the column comes
       // from step 32's `createTable` — the ALTER is guarded `from >= 32` and
       // never runs on this path — so the ALTER itself is proven by the draft
@@ -381,7 +390,7 @@ void main() {
       await db.customSelect('SELECT asset_id FROM ticket_drafts').get();
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 36);
+      expect(version.data['user_version'], 37);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -407,6 +416,11 @@ void main() {
   Future<void> seedV24Database() async {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
     for (final drop in [
+      // v37 — an indexed column cannot be dropped, so the index goes first.
+      'DROP INDEX idx_tickets_work_task',
+      'ALTER TABLE tickets DROP COLUMN work_task_id',
+      'DROP INDEX idx_task_assignments_task_user',
+      'ALTER TABLE tasks DROP COLUMN created_by',
       'DROP TABLE ticket_drafts', // v32
       'DROP TABLE kb_articles', // v31
       'DROP TABLE assets', // v30
@@ -450,8 +464,8 @@ void main() {
       final row = await db
           .customSelect(
             'SELECT subject, sla_due_at, sla_status, number, subject_fold, '
-            'requester_name, requester_email, process_type, tag_names '
-            'FROM tickets WHERE id = ?',
+            'requester_name, requester_email, process_type, tag_names, '
+            'work_task_id FROM tickets WHERE id = ?',
             variables: [Variable.withString('K1')],
           )
           .getSingle();
@@ -468,6 +482,9 @@ void main() {
       expect(row.data['process_type'], null);
       // v36: the desk's words — the server's, so empty until it is sent.
       expect(row.data['tag_names'], null);
+      // v37 (EE-297): the task a request is worked through — the server's
+      // too. This is the only path on which the guarded ALTER runs.
+      expect(row.data['work_task_id'], null);
       // v27's backfill ran over the rows the device already had: a request
       // that is on this device and never sent again is still searchable.
       expect(row.data['subject_fold'], isA<String>());
@@ -491,6 +508,7 @@ void main() {
               'requesterEmail': 'ada@musteri.example',
               'processType': 'incident',
               'tagNames': ['Garanti', 'Hidrolik'],
+              'workTaskId': 'T9',
               'revision': 5,
             }),
           );
@@ -501,9 +519,19 @@ void main() {
       expect(filled.requesterEmail, 'ada@musteri.example');
       expect(filled.processType, 'incident');
       expect(filled.tagNames, '["Garanti","Hidrolik"]');
+      expect(filled.workTaskId, 'T9');
+      // v37's two lookups — "is this task a request's work", and "who is on
+      // it" — exist on the upgraded file, not only on a fresh one.
+      final workIndexes = await db
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'index' AND name IN "
+            "('idx_tickets_work_task', 'idx_task_assignments_task_user')",
+          )
+          .get();
+      expect(workIndexes, hasLength(2));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 36);
+      expect(version.data['user_version'], 37);
       await db.close();
     },
   );
@@ -521,6 +549,14 @@ void main() {
     // Everything added after v34 comes off, newest first — a v34 device had
     // none of it, and a fixture that kept a later column would have the step
     // that adds it fail the open (OPH-350 found this one).
+    for (final drop in [
+      'DROP INDEX idx_tickets_work_task', // v37
+      'ALTER TABLE tickets DROP COLUMN work_task_id', // v37
+      'DROP INDEX idx_task_assignments_task_user', // v37
+      'ALTER TABLE tasks DROP COLUMN created_by', // v37
+    ]) {
+      await db.customStatement(drop);
+    }
     await db.customStatement(
       'ALTER TABLE tickets DROP COLUMN tag_names', // v36
     );
@@ -582,7 +618,7 @@ void main() {
       expect(filled.assetId, 'A1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 36);
+      expect(version.data['user_version'], 37);
       await db.close();
     },
   );
@@ -619,7 +655,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 36);
+      expect(version.data['user_version'], 37);
       await db.close();
     },
   );
@@ -666,7 +702,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 36);
+      expect(version.data['user_version'], 37);
       await db.close();
     },
   );

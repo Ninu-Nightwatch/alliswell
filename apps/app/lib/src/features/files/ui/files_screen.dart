@@ -52,25 +52,25 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
   String? get _currentFolderId => _path.isEmpty ? null : _path.last.id;
 
   Future<void> _createFolder() async {
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty || !mounted) return;
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null || !mounted) return;
     final name = await _promptName(context, title: 'files.newFolder'.tr());
     if (name == null || name.trim().isEmpty) return;
     await ref
         .read(folderStoreProvider)
-        .create(workspaces.first.id, name, parentId: _currentFolderId);
+        .create(workspaceId, name, parentId: _currentFolderId);
   }
 
   /// OPH-244: the picking happened in the widget; this only files the result.
   Future<void> _upload(List<PickedUpload> picks) async {
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty) return;
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) return;
     await ref
         .read(uploadsProvider.notifier)
         .uploadAll(
-          workspaceId: workspaces.first.id,
+          workspaceId: workspaceId,
           targetType: 'workspace',
-          targetId: workspaces.first.id,
+          targetId: workspaceId,
           folderId: _currentFolderId,
           sources: picks,
         );
@@ -149,10 +149,10 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
 
   /// F9 — the confirm names the blast radius before anything dies.
   Future<void> _confirmDeleteFolder(Folder folder) async {
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty) return;
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) return;
     final store = ref.read(folderStoreProvider);
-    final counts = await store.subtreeCounts(workspaces.first.id, folder.id);
+    final counts = await store.subtreeCounts(workspaceId, folder.id);
     if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -193,7 +193,7 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
       // If we are INSIDE the folder (or its subtree), step out first.
       final index = _path.indexWhere((f) => f.id == folder.id);
       if (index >= 0) setState(() => _path.removeRange(index, _path.length));
-      await store.delete(workspaces.first.id, folder.id);
+      await store.delete(workspaceId, folder.id);
     }
   }
 

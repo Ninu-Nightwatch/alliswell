@@ -164,32 +164,12 @@ class HomeShell extends ConsumerWidget {
     };
   }
 
-  /// OPH-056: a sync push the server refused (or trimmed via LWW) surfaces
-  /// as a snackbar — the replica already shows the server's version by the
-  /// time the user reads it.
-  String _conflictMessage(SyncConflict conflict) {
-    if (conflict.conflictVersionId != null) {
-      return 'sync.noteConflict'.tr();
-    }
-    if (conflict.discardedFields.isNotEmpty) {
-      return 'sync.fieldsOverridden'.tr(
-        args: {'fields': conflict.discardedFields.join(', ')},
-      );
-    }
-    if (conflict.status == 'rejected') {
-      return 'sync.rejected'.tr(
-        args: {
-          'code': conflict.errorCode != null ? ' (${conflict.errorCode})' : '',
-        },
-      );
-    }
-    return 'sync.conflicted'.tr();
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Keep the live sync:changed socket (OPH-057) and the OS notification
-    // scheduler (OPH-061) alive while the shell shows.
+    // scheduler (OPH-061) alive while the shell shows — and every engine: in
+    // an organisation the device syncs each of the person's units (EE-296).
+    ref.watch(syncEnginesProvider);
     ref.watch(syncSocketProvider);
     ref.watch(notificationSchedulerProvider);
     // OPH-309: keep this install's notification-registry row fresh — Epic 30's
@@ -240,7 +220,7 @@ class HomeShell extends ConsumerWidget {
       if (conflict == null) return;
       ScaffoldMessenger.maybeOf(
         context,
-      )?.showSnackBar(SnackBar(content: Text(_conflictMessage(conflict))));
+      )?.showSnackBar(SnackBar(content: Text(syncConflictMessage(conflict))));
     });
 
     // Share target (OPH-225): keep the binder alive while the shell shows — it
@@ -612,4 +592,31 @@ AppBar buildSectionAppBar(
       const SizedBox(width: 4),
     ],
   );
+}
+
+/// OPH-056: a sync push the server refused (or trimmed via LWW) surfaces
+/// as a snackbar — the replica already shows the server's version by the
+/// time the user reads it.
+String syncConflictMessage(SyncConflict conflict) {
+  if (conflict.conflictVersionId != null) {
+    return 'sync.noteConflict'.tr();
+  }
+  if (conflict.discardedFields.isNotEmpty) {
+    return 'sync.fieldsOverridden'.tr(
+      args: {'fields': conflict.discardedFields.join(', ')},
+    );
+  }
+  if (conflict.status == 'rejected') {
+    // A refusal the app has words for says what happened — "this request is
+    // closed", "this task is a request's work" — in the words every other
+    // screen uses for that code (EE-297). The generic line with the code is
+    // for a refusal nobody wrote a sentence for yet.
+    final code = conflict.errorCode;
+    final known = code == null
+        ? null
+        : AwI18n.instance.maybeTranslate('error.$code');
+    if (known != null) return known;
+    return 'sync.rejected'.tr(args: {'code': code != null ? ' ($code)' : ''});
+  }
+  return 'sync.conflicted'.tr();
 }

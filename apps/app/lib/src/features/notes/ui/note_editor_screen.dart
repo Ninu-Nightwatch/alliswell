@@ -217,11 +217,11 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   /// instead. Always available, because it never touches the file.
   Future<void> _saveExternalAsNote() async {
     final messenger = ScaffoldMessenger.of(context);
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty || !mounted) return;
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null || !mounted) return;
     await ref
         .read(noteStoreProvider)
-        .create(workspaces.first.id, _doc.bodyFor(_titleText));
+        .create(workspaceId, _doc.bodyFor(_titleText));
     if (!mounted) return;
     setState(() => _dirty = false);
     messenger.showSnackBar(SnackBar(content: Text('note.extSavedAsNote'.tr())));
@@ -243,15 +243,15 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   /// Media uploads need a target id: force-create a brand-new note first
   /// (the editor autosaves anyway — this just does it NOW). OPH-156.
   Future<({String noteId, String workspaceId})?> _ensureNote() async {
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty) return null;
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) return null;
     if (_noteId == null) {
       _dirty = true; // _save() is a no-op unless something is dirty
       await _save();
     }
     final id = _noteId;
     if (id == null) return null;
-    return (noteId: id, workspaceId: workspaces.first.id);
+    return (noteId: id, workspaceId: workspaceId);
   }
 
   String get _titleText => _doc.title.text.trim().isEmpty
@@ -267,9 +267,9 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       final store = ref.read(noteStoreProvider);
       final body = _doc.bodyFor(_titleText);
       if (_noteId == null) {
-        final workspaces = await ref.read(workspacesProvider.future);
-        if (workspaces.isEmpty) return;
-        _noteId = await store.create(workspaces.first.id, body);
+        final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+        if (workspaceId == null) return;
+        _noteId = await store.create(workspaceId, body);
       } else {
         await store.update(_noteId!, body);
       }

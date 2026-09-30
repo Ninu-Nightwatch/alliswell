@@ -228,45 +228,45 @@ final workspaceFilesUsageProvider =
 final folderStoreProvider = Provider<FolderStore>(
   (ref) => FolderStore(
     ref.watch(databaseProvider),
-    onMutation: () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+    onMutation: () => pokeSync(ref),
   ),
 );
 
 /// The workspace's whole live folder tree, name-ordered.
 final foldersProvider = StreamProvider<List<Folder>>((ref) async* {
   ref.watch(syncEngineProvider);
-  final workspaces = await ref.watch(workspacesProvider.future);
-  if (workspaces.isEmpty) {
+  final workspaceId = await ref.watch(activeWorkspaceIdProvider.future);
+  if (workspaceId == null) {
     yield const [];
     return;
   }
-  yield* ref.read(folderStoreProvider).watchAll(workspaces.first.id);
+  yield* ref.read(folderStoreProvider).watchAll(workspaceId);
 });
 
 /// One folder level of workspace files (null = root).
 final workspaceLevelFilesProvider = StreamProvider.autoDispose
     .family<List<FileAttachment>, String?>((ref, folderId) async* {
       ref.watch(syncEngineProvider);
-      final workspaces = await ref.watch(workspacesProvider.future);
-      if (workspaces.isEmpty) {
+      final workspaceId = await ref.watch(activeWorkspaceIdProvider.future);
+      if (workspaceId == null) {
         yield const [];
         return;
       }
       yield* ref
           .read(fileStoreProvider)
-          .watchWorkspaceLevel(workspaces.first.id, folderId: folderId);
+          .watchWorkspaceLevel(workspaceId, folderId: folderId);
     });
 
 /// Every attached file in the workspace, source-labeled (Kaynaklar).
 final workspaceAttachedFilesProvider =
     StreamProvider.autoDispose<List<ProjectFileEntry>>((ref) async* {
       ref.watch(syncEngineProvider);
-      final workspaces = await ref.watch(workspacesProvider.future);
-      if (workspaces.isEmpty) {
+      final workspaceId = await ref.watch(activeWorkspaceIdProvider.future);
+      if (workspaceId == null) {
         yield const [];
         return;
       }
       yield* ref
           .read(fileStoreProvider)
-          .watchWorkspaceAttached(workspaces.first.id);
+          .watchWorkspaceAttached(workspaceId);
     });

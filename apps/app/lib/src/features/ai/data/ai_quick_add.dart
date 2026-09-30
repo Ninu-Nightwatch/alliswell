@@ -59,6 +59,7 @@ class AiQuickAdd {
       'title': text,
       ...awQuickTaskDefaults(),
     });
+    await claimIfShared(_ref.read, workspaceId: workspaceId, taskId: taskId);
     _ref.read(aiEnrichingTasksProvider.notifier).add(taskId);
     unawaited(_enrich(workspaceId: workspaceId, taskId: taskId, text: text));
     return taskId;

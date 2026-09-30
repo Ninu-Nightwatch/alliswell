@@ -9,7 +9,7 @@ import 'data/quick_link.dart';
 final quickAccessStoreProvider = Provider<QuickAccessStore>(
   (ref) => QuickAccessStore(
     ref.watch(databaseProvider),
-    onMutation: () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+    onMutation: () => pokeSync(ref),
   ),
 );
 
@@ -25,14 +25,14 @@ final quickAccessRowsProvider = StreamProvider<List<QuickAccessRow>>((
     yield const [];
     return;
   }
-  final workspaces = await ref.watch(workspacesProvider.future);
-  if (workspaces.isEmpty) {
+  final workspaceId = await ref.watch(activeWorkspaceIdProvider.future);
+  if (workspaceId == null) {
     yield const [];
     return;
   }
   yield* ref
       .read(quickAccessStoreProvider)
-      .watchMine(workspaces.first.id, userId);
+      .watchMine(workspaceId, userId);
 });
 
 /// Whether a given target already sits on the rail — what the entity menus

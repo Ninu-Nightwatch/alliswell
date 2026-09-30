@@ -146,8 +146,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// otherwise dateless — either way it appears in the list right away
   /// (feedback round 2).
   Future<void> _quickAdd(String title) async {
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty) throw StateError('No workspace available');
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) throw StateError('No workspace available');
     final selectedDay = ref.read(selectedDayProvider);
     if (!mounted) return;
     // Round 14: quick add asks for the deadline every time — the create
@@ -158,7 +158,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     dueAt ??= selectedDay == null
         ? null
         : applyDefaultTaskTime(selectedDay, ref.read(defaultTaskTimeProvider));
-    await ref.read(taskStoreProvider).create(workspaces.first.id, {
+    // In the workspace on screen — and, in an organisation's, on the person
+    // who added it: a task added from Home is that person's work.
+    await createOwnTask(ref.read, {
       'title': title,
       // Round-14 defaults: medium priority, urgent alarm on, and a reminder
       // an hour before the deadline whenever one was picked.
@@ -171,11 +173,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// asynchronously, and any failure leaves the plain task standing. No
   /// confirm card on this path.
   Future<void> _parseWithAi(String text) async {
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty) return;
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) return;
     await ref
         .read(aiQuickAddProvider)
-        .start(workspaceId: workspaces.first.id, text: text);
+        .start(workspaceId: workspaceId, text: text);
   }
 
   @override

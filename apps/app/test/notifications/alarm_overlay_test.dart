@@ -202,6 +202,21 @@ void main() {
       container = ProviderContainer(
         overrides: [
           ...syncTestOverrides(alarmOverlayAutoShow: autoShow),
+          // The world the alarm feed reads its scope from (EE-296): who is
+          // signed in, and the one workspace they own.
+          currentUserIdProvider.overrideWithValue('U1'),
+          workspacesProvider.overrideWith(
+            (ref) async => const [
+              WorkspaceSummary(
+                id: wsId,
+                name: 'Personal',
+                slug: 'personal',
+                colorRgb: '#2563EB',
+                role: 'owner',
+                owned: true,
+              ),
+            ],
+          ),
           currentWorkspaceProvider.overrideWithValue(
             const AsyncData<WorkspaceSummary?>(
               WorkspaceSummary(

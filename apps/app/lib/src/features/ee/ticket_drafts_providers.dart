@@ -280,7 +280,7 @@ final sentDraftsProvider =
 final ticketDraftStoreProvider = Provider<TicketDraftStore>((ref) {
   return TicketDraftStore(
     ref.watch(databaseProvider),
-    onMutation: () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+    onMutation: () => pokeSync(ref),
   );
 });
 

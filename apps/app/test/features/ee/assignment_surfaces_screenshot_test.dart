@@ -21,11 +21,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alliswell/src/features/ee/assignments_providers.dart';
 import 'package:alliswell/src/features/ee/data/history_models.dart';
 import 'package:alliswell/src/features/ee/history_providers.dart';
-import 'package:alliswell/src/features/ee/ui/assigned_to_me_screen.dart';
 import 'package:alliswell/src/features/ee/ui/assignee_avatars.dart';
 import 'package:alliswell/src/features/ee/ui/task_history_screen.dart';
-import 'package:alliswell/src/features/tasks/data/task.dart';
-import 'package:alliswell/src/features/tasks/providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 import 'package:alliswell/src/theme/tokens.dart';
@@ -55,21 +52,6 @@ final _crew = [
   // one stranger in it is what a real team looks like a month after a leaver.
   const Assignee(assignmentId: 'A-GONE', userId: 'U-GONE'),
 ];
-
-Task _task(String id, String title, {DateTime? due, String status = 'open'}) =>
-    Task(
-      id: id,
-      workspaceId: _kWorkspace,
-      title: title,
-      status: status,
-      priority: 'medium',
-      timezone: 'Europe/Istanbul',
-      isUrgent: false,
-      requiresAcknowledgement: false,
-      sortOrder: 0,
-      revision: 1,
-      dueAt: due,
-    );
 
 EeHistoryEvent _event(
   String id,
@@ -176,36 +158,6 @@ void main() {
           ),
         ),
       );
-    });
-
-    testWidgets('assigned to me — ${brightness.name}', (tester) async {
-      final tasks = [
-        _task('T1', 'Trafo bakımı', due: DateTime(2026, 8, 24, 9)),
-        _task('T2', 'Pano montajı — 3. hat', due: DateTime(2026, 8, 26, 14)),
-        _task('T3', 'Saha kurulum raporu'),
-      ];
-      await shoot(tester, brightness, 'ee-assigned-to-me', [
-        openTasksProvider.overrideWith((ref) => Stream.value(tasks)),
-        myAssignedTaskIdsProvider.overrideWith(
-          (ref) => Stream.value({'T1', 'T2', 'T3'}),
-        ),
-        workspaceAssigneesProvider.overrideWith(
-          (ref) => Stream.value({
-            'T1': _crew.take(2).toList(),
-            'T2': [_crew.first],
-            'T3': [_crew.last],
-          }),
-        ),
-      ], const EeAssignedToMeScreen());
-    });
-
-    testWidgets('assigned to me, empty — ${brightness.name}', (tester) async {
-      await shoot(tester, brightness, 'ee-assigned-to-me-empty', [
-        openTasksProvider.overrideWith((ref) => Stream.value(const <Task>[])),
-        myAssignedTaskIdsProvider.overrideWith(
-          (ref) => Stream.value(const <String>{}),
-        ),
-      ], const EeAssignedToMeScreen());
     });
 
     testWidgets('a task’s history — ${brightness.name}', (tester) async {

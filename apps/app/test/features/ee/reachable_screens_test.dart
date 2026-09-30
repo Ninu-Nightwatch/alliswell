@@ -57,16 +57,15 @@ const _adminRows = [
 ];
 
 /// EE-294: Approvals is not a Settings row for anybody any more — it is in
-/// the navigation (`approvals_entry_test.dart`).
-const _gone = ['settings-group-team-approvals'];
+/// the navigation (`approvals_entry_test.dart`). EE-296: nor is "assigned to
+/// me" — a member's Home is their work.
+const _gone = ['settings-group-team-approvals', 'settings-group-assignments'];
 
-/// What anybody in a team may open: asking, being away, being told, being
-/// given work.
+/// What anybody in a team may open: asking, being away, being told.
 const _memberRows = [
   'settings-group-my-tickets',
   'settings-group-absences',
   'settings-group-team-notifications',
-  'settings-group-assignments',
 ];
 
 EeTeamInfo _team(String role) => EeTeamInfo(

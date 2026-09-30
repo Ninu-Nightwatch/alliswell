@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,7 +17,9 @@ class WorkspaceSummary {
     required this.colorRgb,
     required this.role,
     this.icon,
-  });
+    bool? owned,
+  }) : owned = owned ?? role == 'owner',
+       reportsOwnership = owned != null;
 
   factory WorkspaceSummary.fromJson(Map<String, dynamic> json) =>
       WorkspaceSummary(
@@ -25,7 +29,20 @@ class WorkspaceSummary {
         colorRgb: (json['colorRgb'] as String?) ?? '#2563EB',
         icon: json['icon'] as String?,
         role: json['role'] as String,
+        owned: json['owned'] as bool?,
       );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'slug': slug,
+    'colorRgb': colorRgb,
+    'icon': icon,
+    'role': role,
+    // Only what the server said: a cached guess read back would claim a
+    // server that never sent the field did (see [reportsOwnership]).
+    if (reportsOwnership) 'owned': owned,
+  };
 
   final String id;
   final String name;
@@ -33,24 +50,123 @@ class WorkspaceSummary {
   final String colorRgb;
   final String? icon;
   final String role;
+
+  /// Whether this account OWNS the workspace (`/me` → `owned`). Not the same
+  /// question as [role] `owner`, which a member can hold in a workspace an
+  /// organisation created — the client decides which space is the person's own
+  /// from this, never from the list's order.
+  ///
+  /// When it is not given — a server from before the field, or a summary built
+  /// by hand — `role: owner` stands in for it: before organisations that was
+  /// the one workspace an account could hold that role in.
+  final bool owned;
+
+  /// Whether [owned] came from the server rather than from [role]. A server
+  /// that sends it also sends who made each task (`createdBy`), the fact
+  /// "made by me" reads — see `repullOnceForCreatedBy`.
+  final bool reportsOwnership;
 }
+
+const String _kWorkspacesCachePrefix = 'alliswell_me_workspaces::';
 
 /// The signed-in user's workspaces. Re-fetches whenever the session changes;
 /// empty while signed out.
+///
+/// The last good answer is kept per user, and an offline start reads it: the
+/// list decides WHICH workspaces the person's lists and the sync engines cover,
+/// and a device that forgot it at every cold start without signal would open
+/// onto nothing while its replica held everything.
 final workspacesProvider = FutureProvider<List<WorkspaceSummary>>((ref) async {
   final session = ref.watch(authControllerProvider).value;
   if (session == null) return const [];
+  final key = '$_kWorkspacesCachePrefix${session.user.id}';
   final dio = ref.watch(apiClientProvider);
   try {
     final res = await dio.get<Map<String, dynamic>>('/api/v1/me');
     final list = (res.data?['workspaces'] as List?) ?? const [];
-    return list
+    final workspaces = list
         .map((w) => WorkspaceSummary.fromJson(w as Map<String, dynamic>))
         .toList();
+    await localKv.set(
+      key,
+      jsonEncode([for (final w in workspaces) w.toJson()]),
+    );
+    return workspaces;
   } on DioException catch (e) {
+    // Only NO answer falls back to the last list. A server that answered —
+    // a revoked session, a deleted account — said something the cache must
+    // not paper over.
+    if (e.response == null) {
+      final cached = await readCachedWorkspaces(session.user.id);
+      if (cached != null) return cached;
+    }
     throw asApiException(e);
   }
 });
+
+/// The last `/me` list this device saw for [userId], or null — also what a
+/// background turn reads, since it has no provider graph and no network promise.
+Future<List<WorkspaceSummary>?> readCachedWorkspaces(String userId) async {
+  final raw = await localKv.get('$_kWorkspacesCachePrefix$userId');
+  if (raw == null) return null;
+  try {
+    return [
+      for (final w in jsonDecode(raw) as List)
+        WorkspaceSummary.fromJson(w as Map<String, dynamic>),
+    ];
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Workspaces this account works in but does not own — an organisation's.
+///
+/// Empty for a person using the app on their own (their one workspace is
+/// theirs). When it is not empty the account is a member's account: the
+/// person's lists gather their work from all of these, the content screens
+/// show the one selected among them, and the workspace the account owns is
+/// kept out of every list (it only carries unsent drafts — see
+/// `draftWorkspaceIdProvider`).
+List<WorkspaceSummary> sharedWorkspacesOf(List<WorkspaceSummary> all) => [
+  for (final w in all)
+    if (!w.owned) w,
+];
+
+final sharedWorkspacesProvider = Provider<List<WorkspaceSummary>>(
+  (ref) => sharedWorkspacesOf(ref.watch(workspacesProvider).value ?? const []),
+);
+
+/// True when the account works in an organisation's workspaces (see
+/// [sharedWorkspacesOf]). False while loading and for a person on their own.
+final inSharedWorkspacesProvider = Provider<bool>(
+  (ref) => ref.watch(sharedWorkspacesProvider).isNotEmpty,
+);
+
+/// The unit a row of the person's own list comes from, by workspace id —
+/// the label under a task on Home when the person works in several of an
+/// organisation's units (EE-296). Empty otherwise: with one unit, or on one's
+/// own, every row would carry the same word, and a label that never changes
+/// says nothing.
+final unitLabelsProvider = Provider<Map<String, String>>((ref) {
+  final shared = ref.watch(sharedWorkspacesProvider);
+  if (shared.length < 2) return const {};
+  return {for (final w in shared) w.id: w.name};
+});
+
+/// The workspace this account owns, or null.
+final ownWorkspaceProvider = Provider<WorkspaceSummary?>((ref) {
+  for (final w in ref.watch(workspacesProvider).value ?? const []) {
+    if (w.owned) return w;
+  }
+  return null;
+});
+
+/// The workspaces the switcher offers: an organisation's when the account
+/// works in one, otherwise every workspace it has.
+List<WorkspaceSummary> switchableWorkspacesOf(List<WorkspaceSummary> all) {
+  final shared = sharedWorkspacesOf(all);
+  return shared.isEmpty ? all : shared;
+}
 
 /// Which workspace this person last chose — persisted, and keyed PER USER.
 ///
@@ -87,8 +203,8 @@ class SelectedWorkspace extends Notifier<String?> {
 final selectedWorkspaceIdProvider =
     NotifierProvider<SelectedWorkspace, String?>(SelectedWorkspace.new);
 
-/// The workspace everything else reads (16 call sites) — so switching is one
-/// provider changing, and the sync engine follows because it WATCHES this.
+/// The workspace the content screens read and the switcher shows as chosen —
+/// so switching is one provider changing.
 ///
 /// EE-061 lifted the v1 constraint that lived here as `list.first`. What
 /// replaced it is deliberately forgiving in one direction: an unknown or
@@ -96,13 +212,30 @@ final selectedWorkspaceIdProvider =
 /// to null. That case is not hypothetical — losing a unit removes a workspace
 /// from this list (EE-058), and a person whose selected unit was revoked must
 /// land somewhere, not on an empty app.
+///
+/// It chooses among [switchableWorkspacesOf]: in an organisation's workspaces
+/// the one the account owns is never "current" — there is nothing of the
+/// person's own to show there.
 final currentWorkspaceProvider = Provider<AsyncValue<WorkspaceSummary?>>((ref) {
   final selected = ref.watch(selectedWorkspaceIdProvider);
-  return ref.watch(workspacesProvider).whenData((list) {
+  return ref.watch(workspacesProvider).whenData((all) {
+    final list = switchableWorkspacesOf(all);
     if (list.isEmpty) return null;
     if (selected == null) return list.first;
     return list.firstWhere((w) => w.id == selected, orElse: () => list.first);
   });
+});
+
+/// The id the content screens read and write in (notes, projects, files, tags,
+/// quick access, a task's create sheet): the current workspace, awaited — a
+/// screen must not draw "nothing here" while the list is still loading.
+///
+/// For a person on their own this is their one workspace, exactly the
+/// `workspaces.first` every one of these read before; in an organisation it is
+/// the one selected in the switcher.
+final activeWorkspaceIdProvider = FutureProvider<String?>((ref) async {
+  await ref.watch(workspacesProvider.future);
+  return ref.watch(currentWorkspaceProvider).value?.id;
 });
 
 /// The signed-in user's id, or null while signed out / restoring (OPH-198).

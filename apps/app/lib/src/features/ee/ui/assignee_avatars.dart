@@ -304,7 +304,10 @@ class _AssigneePicker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final roster = ref.watch(workspaceRosterProvider).value ?? const [];
+    // The TASK's workspace, not the one on screen (EE-296): a task opened
+    // from Home may live in another unit, and only its own people can be on it.
+    final roster =
+        ref.watch(workspaceRosterOfProvider(workspaceId)).value ?? const [];
     final assignees =
         ref.watch(taskAssigneesProvider(taskId)).value ?? const [];
     final byUser = {for (final a in assignees) a.userId: a};

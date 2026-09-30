@@ -17,8 +17,13 @@ class ProjectStore {
   final void Function() _poke;
 
   Stream<List<Project>> watchAll(String workspaceId) =>
+      watchAllIn([workspaceId]);
+
+  /// [watchAll] over several workspaces: the projects a person's lists can
+  /// meet — in an organisation, a row on Home may come from any of its units.
+  Stream<List<Project>> watchAllIn(List<String> workspaceIds) =>
       (_db.select(_db.projects)
-            ..where((p) => p.workspaceId.equals(workspaceId))
+            ..where((p) => p.workspaceId.isIn(workspaceIds))
             // Server list order: sort_order, then created_at.
             ..orderBy([
               (p) => OrderingTerm.asc(p.sortOrder),

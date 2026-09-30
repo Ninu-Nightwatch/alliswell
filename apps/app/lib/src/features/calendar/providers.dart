@@ -18,10 +18,13 @@ final externalEventsProvider = StreamProvider<List<ExternalEvent>>((
   ref,
 ) async* {
   ref.watch(syncEngineProvider); // keep background sync alive, like tasks do
-  final workspaces = await ref.watch(workspacesProvider.future);
-  if (workspaces.isEmpty) {
+  final workspaceId = await ref.watch(activeWorkspaceIdProvider.future);
+  // A connected calendar is a person's own, and an organisation's workspaces
+  // are shared: a calendar connected there would reach everyone in the
+  // workspace, so none is drawn (or offered — see the integrations screen).
+  if (workspaceId == null || ref.watch(inSharedWorkspacesProvider)) {
     yield const [];
     return;
   }
-  yield* ref.watch(externalEventStoreProvider).watchAll(workspaces.first.id);
+  yield* ref.watch(externalEventStoreProvider).watchAll(workspaceId);
 });

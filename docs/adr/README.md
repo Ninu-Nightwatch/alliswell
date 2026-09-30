@@ -51,6 +51,7 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0041](0041-an-extension-that-wrote-data-must-be-present-to-serve-it.md) | An extension that wrote data must be present to serve it | Accepted — revises the loader's failure policy (EE-002) |
 | [0042](0042-layered-verification-and-the-loop-contract.md) | Layered verification, a machine-picked next task, and the loop contract | Accepted |
 | [0043](0043-the-deploy-runs-on-a-runner-on-the-server.md) | The deploy runs on a runner on the server, started from the overlay's private repository | Accepted |
+| [0044](0044-shared-workspaces-sync-together.md) | Shared workspaces sync together; a person's lists are their own work — `owned`, the task scope, and three seam additions (write refusals, described deletions, reminder audiences) | Accepted |
 
 > Rows 0024–0027 were missing until 2026-08-10 (OPH-242): four ADRs had landed
 > without an index line. 0028 was held as a **reserved** row while OPH-246 was

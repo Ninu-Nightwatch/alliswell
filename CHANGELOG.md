@@ -9,6 +9,24 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Changed
 
+- **In an organisation's workspaces, Home is your own work (EE-296, ADR-0044).** Home lists the
+  tasks you are on and the ones you made that nobody took, from every workspace you are in —
+  each row names its workspace when there are several — never a colleague's. Notes, projects
+  and files show the workspace selected in the switcher; a task added from Home lands there and
+  is assigned to you. Every one of those workspaces now stays in sync on the device, the
+  notification centre gathers them all, alarms and reminder pushes ring only for your own work,
+  and calendars are not connected there. "Assigned to me" moved into Home (its address opens
+  Home). Using the app on your own, nothing changes.
+- **A request you are put on is a task on your list (EE-297).** Its row names the request and
+  opens it; finishing the task resolves the request, reopening it takes the request back. The
+  task cannot be deleted — "Give the request back" does that — and its title, priority and date
+  follow the request unless you change them yourself. A refused change now says what happened
+  ("this request is closed") instead of showing a code.
+- **For extensions and API clients (ADR-0044).** `/me` marks the workspace the account `owned`
+  and is ordered; tasks carry `createdBy`. An extension can refuse a write from inside its
+  transaction — REST answers 409 with the code, the push records a rejection with the row to
+  rebase on, instead of failing the whole push — and it is now told about task deletions and
+  `PATCH` edits too. Due-reminder pushes can be narrowed per task by an extension.
 - **Approvals are in the navigation, with a count (EE-294).** The approvals screen left
   Settings, where only a team's owner and admins could find it: on a wide screen it sits in
   the rail directly under Requests, on a phone it is pinned at the top of Quick Access (it

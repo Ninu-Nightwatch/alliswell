@@ -12,6 +12,7 @@ import '../features/api_keys/ui/api_docs_row.dart';
 import '../features/auth/providers.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
+import '../features/workspaces/workspaces.dart';
 import '../features/notes/providers.dart' show noteSourceStylingChoiceProvider;
 import '../features/onboarding/tour.dart';
 import '../features/settings/account_deletion.dart';
@@ -336,19 +337,6 @@ class SettingsScreen extends ConsumerWidget {
                   titleKey: 'settings.group.meetings',
                   subtitleKey: 'settings.group.meetingsSub',
                   path: '/meetings',
-                ),
-              // EE-068: "assigned to me". Shown to anyone whose workspace has
-              // a roster — being given work is not an admin act, and the
-              // person most likely to want this list is the one with the
-              // fewest other team rows. The test is the REPLICA's own data,
-              // so it is right offline and absent on a plain build.
-              if (inTeam)
-                _GroupRow(
-                  keyName: 'settings-group-assignments',
-                  icon: Icons.assignment_ind_outlined,
-                  titleKey: 'settings.group.assignments',
-                  subtitleKey: 'settings.group.assignmentsSub',
-                  path: '/settings/team/assignments',
                 ),
               // Kept on the root, and kept a dialog: it is one screenful of
               // facts, not a place with settings in it.
@@ -741,18 +729,33 @@ class SettingsNotificationsScreen extends ConsumerWidget {
 }
 
 /// Entegrasyonlar: the things AllisWell talks to (§32 S2).
-class SettingsIntegrationsScreen extends StatelessWidget {
+class SettingsIntegrationsScreen extends ConsumerWidget {
   const SettingsIntegrationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => _SettingsPage(
+  Widget build(BuildContext context, WidgetRef ref) => _SettingsPage(
     title: 'settings.group.integrations'.tr(),
     children: [
-      // OPH-080: the only door to the Epic 08 calendar vertical.
-      const GoogleCalendarCard(),
-      const SizedBox(height: AwSpace.x3),
-      // OPH-078: the device-side twin — hides itself off Apple platforms.
-      const AppleCalendarCard(),
+      // A connected calendar is a person's own and mirrors a WORKSPACE: in an
+      // organisation's shared workspaces it would carry everyone's tasks out
+      // to one person's calendar, and one person's events in to everyone.
+      // So it is not offered there, and the screen says why.
+      if (ref.watch(inSharedWorkspacesProvider))
+        Card(
+          key: const Key('calendar-not-in-shared'),
+          child: ListTile(
+            leading: const Icon(Icons.event_busy_outlined),
+            title: Text('calendar.calendar'.tr()),
+            subtitle: Text('calendar.notInShared'.tr()),
+          ),
+        )
+      else ...[
+        // OPH-080: the only door to the Epic 08 calendar vertical.
+        const GoogleCalendarCard(),
+        const SizedBox(height: AwSpace.x3),
+        // OPH-078: the device-side twin — hides itself off Apple platforms.
+        const AppleCalendarCard(),
+      ],
       const SizedBox(height: AwSpace.x3),
       // OPH-220: AI — hides itself when the server has AI disabled. The MCP
       // connector card lives inside it and stays there.

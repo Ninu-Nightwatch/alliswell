@@ -71,6 +71,8 @@
 - **DERS** Sunucu patch'teki ilk bilinmeyen alanda mutation'ın TAMAMINI reddeder (reddedilen create yerel satırı bırakır) → testte istemcinin gerçek gövdesini gönder; `enqueueMutation` assert'i yalnız koşulan yolu görür.
 - **DERS** Socket.IO `sync:ready` connect ack'iyle aynı TCP segmentinde gelebilir → istemci dinleyicilerini handshake'ten ÖNCE bağla.
 - **NOT** Soket oda üyeliği bağlantı anında donar (JWT yalnız bağlanırken doğrulanır) → yeni workspace üyeliği yeniden bağlanana dek `sync:changed` almaz; periyodik pull yedektir.
+- **KARAR** Paylaşılan alanlar birlikte senkronda: alan başına motor, yazım `pokeSync(ref)` ile hepsini dürter, düşen alan son tur alır; kişisel kullanımda tek motor (ADR-0044).
+- **DERS** Gözlemcinin fırlatması push'u 500'e çevirir, cihaz yazımı sonsuza dek yollar → içeriden ret `syncRefusal(code)` (REST 409, push rejected+rebase).
 
 ## drift-replica — istemci replikası, göçler, outbox
 - **DERS** drift'in varsayılan `onUpgrade`'i fırlatır: basamaksız `schemaVersion` artışı her replikayı tuğlalar → her sürüm `if (from < n)` basamağı; replika outbox taşır, "sil, yeniden çek" güvenli değil.
@@ -83,6 +85,7 @@
 - **DERS** JOIN'li sorguda `LIMIT` join satırlarını sayar (3 etiketli görev 3 slot yer) → sayfayı ana satırda al, ilişkiyi sonra oku; kararlı eşitlik bozucu (`id` DESC).
 - **DERS** Outbox koalesansı + settle'da koşulsuz silme uçuştayken yazılan gövdeyi siler → settle yalnız `localUpdatedAt` eşleşirse siler; açık editör temizse pull'u yerinde alır (`adoptRemote`), kirliyse metnini korur.
 - **DERS** Replikanın iki yazarı var (widget arka plan izolatı + uygulama) → `awSqlitePragmas`: WAL + `busy_timeout=5000`.
+- **DERS** Süzgecin okuduğu sunucu-sahipli yeni kolon (v37 `createdBy`) eski satırda null → alan bir kez imleç 0'dan çekilir (`repullOnceForCreatedBy`); başsız tur `sync_states`'in HER satırını dolaşır.
 - **DERS** Web replikası commit'li `web/sqlite3.wasm` + `web/drift_worker.js`'e dayanır, drift/sqlite3 sürümüne sabittir → drift yükseltilirken ikisi birlikte yenilenir.
 
 ## flutter-app — ürün sözleşmeleri, Riverpod, go_router, testler
@@ -105,6 +108,8 @@
 - **DERS** Test: sonsuz animasyonda `pumpAndSettle` dönmez → `pump(süre)`; snackbar timer'ı teardown'ı patlatır → sonda `pump(6s)`; sürükleme `startGesture`+`moveBy`; gerçek async kurulum `tester.runAsync` içinde.
 - **DERS** Dokunmatik panel kare başına birden çok hareket olayı verir: gesture callback'i `build`'in yereline eklerse (`centre + d.delta`) sonuncusu dışındakiler düşer, `DragStartBehavior.start` da eşiği yutar → state alanına biriktir, `.down`; test aralarında `pump` olmayan art arda `moveBy` ile (#17).
 - **DERS** `flutter test --platform chrome` koşamaz (test config i18n'i `dart:io` ile okur); `kIsWeb` VM testinde sabit false → web kararını provider'a taşı, gerçek web davranışını tarayıcıda gör.
+- **KARAR** Kişinin listeleri (Home, Board, alarm, widget, başsız tur) `taskScopeProvider`'dan, içerik ekranları `activeWorkspaceIdProvider`'dan; `workspaces.first` okunmaz; kendi alan `owned`'dan (ADR-0044).
+- **DERS** Test: elle `currentWorkspaceProvider` veren test `workspacesProvider`'ı (+ `currentUserIdProvider`) da verir, yoksa oturumun 4 sn zamanlayıcısı; `localKv` örneği tutar → anahtarı `setUp`'ta sil.
 
 ## design-ui — tokenlar, kontrast, yüzeyler
 - **KARAR** Renk yalnız paletten, kullanıcıya hex asla; not rengi ADIYLA saklanır, her tema kendi değerini çözer (tek hex iki temada 4.5 tutmaz); markdown'a renk sözdizimi yok, yalnız `==vurgu==` (DESIGN §33).

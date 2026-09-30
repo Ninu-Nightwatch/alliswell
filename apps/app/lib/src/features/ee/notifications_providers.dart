@@ -7,7 +7,6 @@ import '../../i18n/i18n.dart';
 import '../../sync/db/database.dart';
 import '../../sync/outbox.dart';
 import '../../sync/providers.dart';
-import '../workspaces/workspaces.dart';
 
 /// The notification centre's data (EE-077, on EE-073's synced inbox).
 ///
@@ -126,21 +125,26 @@ class NotificationItem {
 /// must not pay for rows nobody is looking at. It updates the moment a pull
 /// writes a row, because drift's `watch` is the same mechanism the rest of the
 /// app already uses to stay live.
+///
+/// Every synced workspace counts: what happened to a person in one unit is
+/// news whichever unit is on screen — a request assigned to them in another
+/// unit showed up only once they happened to switch to it.
 final unreadNotificationCountProvider = StreamProvider<int>((ref) {
-  final workspace = ref.watch(currentWorkspaceProvider).value;
-  if (workspace == null) return Stream.value(0);
+  final workspaceIds = ref.watch(syncWorkspaceIdsProvider);
+  if (workspaceIds.isEmpty) return Stream.value(0);
   final db = ref.watch(databaseProvider);
   final count = db.notifications.id.count();
   final query = db.selectOnly(db.notifications)
     ..addColumns([count])
     ..where(
-      db.notifications.workspaceId.equals(workspace.id) &
+      db.notifications.workspaceId.isIn(workspaceIds) &
           db.notifications.readAt.isNull(),
     );
   return query.map((row) => row.read(count) ?? 0).watchSingle();
 });
 
-/// The centre's list: newest first, unread and read together.
+/// The centre's list: newest first, unread and read together, from every
+/// synced workspace (see [unreadNotificationCountProvider]).
 ///
 /// Not split into two sections. A notification you have read is still the
 /// record of what happened, and hiding it behind a filter turns the centre
@@ -148,11 +152,11 @@ final unreadNotificationCountProvider = StreamProvider<int>((ref) {
 final notificationCenterProvider = StreamProvider<List<NotificationItem>>((
   ref,
 ) {
-  final workspace = ref.watch(currentWorkspaceProvider).value;
-  if (workspace == null) return Stream.value(const <NotificationItem>[]);
+  final workspaceIds = ref.watch(syncWorkspaceIdsProvider);
+  if (workspaceIds.isEmpty) return Stream.value(const <NotificationItem>[]);
   final db = ref.watch(databaseProvider);
   final query = db.select(db.notifications)
-    ..where((n) => n.workspaceId.equals(workspace.id))
+    ..where((n) => n.workspaceId.isIn(workspaceIds))
     ..orderBy([
       (n) => OrderingTerm.desc(n.createdAt),
       (n) => OrderingTerm.desc(n.id),
@@ -208,18 +212,18 @@ class NotificationStore {
     _poke();
   }
 
-  /// "Mark everything read" — one mutation per row, on purpose.
+  /// "Mark everything read" — everything the centre lists, from
+  /// [workspaceIds]; one mutation per row, on purpose.
   ///
   /// The server has no bulk verb for this and inventing a client-only one
   /// would make the two paths disagree the first time a push failed halfway.
   /// The outbox is built for exactly this: a queue of small, independently
-  /// retryable facts.
-  Future<int> markAllRead() async {
-    final workspaceId = await _currentWorkspaceOfUnread();
-    if (workspaceId == null) return 0;
+  /// retryable facts. Each row's mutation goes to its own workspace.
+  Future<int> markAllRead(List<String> workspaceIds) async {
+    if (workspaceIds.isEmpty) return 0;
     final unread =
         await (_db.select(_db.notifications)..where(
-              (n) => n.workspaceId.equals(workspaceId) & n.readAt.isNull(),
+              (n) => n.workspaceId.isIn(workspaceIds) & n.readAt.isNull(),
             ))
             .get();
     for (final row in unread) {
@@ -227,20 +231,11 @@ class NotificationStore {
     }
     return unread.length;
   }
-
-  Future<String?> _currentWorkspaceOfUnread() async {
-    final row =
-        await (_db.select(_db.notifications)
-              ..where((n) => n.readAt.isNull())
-              ..limit(1))
-            .getSingleOrNull();
-    return row?.workspaceId;
-  }
 }
 
 final notificationStoreProvider = Provider<NotificationStore>(
   (ref) => NotificationStore(
     ref.watch(databaseProvider),
-    onMutation: () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+    onMutation: () => pokeSync(ref),
   ),
 );

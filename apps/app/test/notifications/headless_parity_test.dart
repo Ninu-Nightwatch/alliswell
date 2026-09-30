@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/core/app_liveness.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
+import 'package:alliswell/src/features/tasks/data/task_scope.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/notifications/headless.dart';
 import 'package:alliswell/src/notifications/gateway.dart';
@@ -173,6 +174,61 @@ void main() {
       expect(unbooted, hasLength(booted.length));
     },
   );
+
+  test("a member's alarms: the same set both ways, and only their own", () async {
+    // In an organisation's workspaces the alarms are the person's work, not
+    // every task of the unit on screen — a colleague's reminder rang on every
+    // phone that had that unit open. The headless read must draw the same
+    // line as the live one, or the background turn schedules what the app
+    // would never have.
+    const me = '01USERMEAAAAAAAAAAAAAAAAAA';
+    const colleague = '01USERCOLLEAGUEAAAAAAAAAAA';
+    const unitB = '01WSUNITBBBBBBBBBBBBBBBBBB';
+    Future<void> task(
+      String tid,
+      String unit, {
+      required String createdBy,
+      String? assignee,
+    }) async {
+      await db
+          .into(db.tasks)
+          .insert(
+            TasksCompanion.insert(
+              id: id(tid),
+              workspaceId: unit,
+              title: 'Görev $tid',
+              remindAt: Value(now.add(const Duration(hours: 1))),
+              createdBy: Value(createdBy),
+            ),
+          );
+      if (assignee == null) return;
+      await db
+          .into(db.taskAssignments)
+          .insert(
+            TaskAssignmentsCompanion.insert(
+              id: id('A$tid'),
+              workspaceId: unit,
+              taskId: id(tid),
+              userId: assignee,
+            ),
+          );
+    }
+
+    await task('MINE', ws, createdBy: colleague, assignee: me);
+    await task('MADE', unitB, createdBy: me);
+    await task('THEIRS', ws, createdBy: me, assignee: colleague);
+    await task('TEAM', unitB, createdBy: colleague);
+    final scope = TaskScope.mine([ws, unitB], me);
+
+    final live = await store.watchAlarmsIn(scope).first;
+    final headless = await store.readAlarmsIn(scope);
+
+    expect({for (final a in headless) a.taskId}, {id('MINE'), id('MADE')});
+    expect(
+      {for (final a in live) a.taskId},
+      {for (final a in headless) a.taskId},
+    );
+  });
 
   test('the headless turn boots i18n before it can schedule anything', () async {
     // The literal negative control the contract asks for: delete

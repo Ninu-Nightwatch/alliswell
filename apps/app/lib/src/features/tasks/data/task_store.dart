@@ -9,6 +9,7 @@ import '../../../sync/sync_applier.dart';
 import '../../quick_access/data/quick_access_store.dart';
 import '../../quick_access/data/quick_link.dart';
 import 'task.dart';
+import 'task_scope.dart';
 
 /// Statuses that appear on planning lists (Home, project Tasks). Inbox captures
 /// (`inbox`) are excluded — they live only in the Inbox until triaged (OPH-107);
@@ -20,10 +21,16 @@ const kPlanningStatuses = ['open', 'scheduled', 'in_progress', 'waiting'];
 /// patch in the outbox (OPH-055) inside one transaction, then poke the sync
 /// engine. The server stays canonical — pulled snapshots overwrite rows.
 class TaskStore {
-  TaskStore(this._db, this._poke);
+  TaskStore(this._db, this._poke, {this.userId});
 
   final AwDatabase _db;
   final void Function() _poke;
+
+  /// Who is writing — stamped as `createdBy` on a local create so the row is
+  /// right before the server answers (a member's Home shows what they made
+  /// that nobody took; see [TaskScope]). Null in a background isolate that
+  /// never creates.
+  final String? userId;
 
   // ── Reads ──────────────────────────────────────────────────────────────────
 
@@ -36,21 +43,38 @@ class TaskStore {
   Stream<List<Task>> watchOpen(
     String workspaceId, {
     DateTime? completedSince,
-  }) => _watchList(
-    workspaceId,
-    (t) =>
-        t.workspaceId.equals(workspaceId) &
-        (t.status.isIn(kPlanningStatuses) | _completedSince(t, completedSince)),
+  }) => watchOpenIn(
+    TaskScope.workspace(workspaceId),
+    completedSince: completedSince,
   );
+
+  /// [watchOpen] over a [TaskScope] — one workspace, or a member's own work
+  /// across an organisation's.
+  Stream<List<Task>> watchOpenIn(TaskScope scope, {DateTime? completedSince}) =>
+      _watchList(
+        scope.workspaceIds.first,
+        (t) =>
+            taskScopeFilter(_db, t, scope) &
+            (t.status.isIn(kPlanningStatuses) |
+                _completedSince(t, completedSince)),
+      );
 
   /// Every status — the Board's source (OPH-168): its columns include
   /// terminal statuses the planning lists deliberately hide.
   Stream<List<Task>> watchAll(String workspaceId) =>
-      _watchList(workspaceId, (t) => t.workspaceId.equals(workspaceId));
+      watchAllIn(TaskScope.workspace(workspaceId));
 
-  Stream<List<Task>> watchInbox(String workspaceId) => _watchList(
-    workspaceId,
-    (t) => t.workspaceId.equals(workspaceId) & t.status.equals('inbox'),
+  Stream<List<Task>> watchAllIn(TaskScope scope) => _watchList(
+    scope.workspaceIds.first,
+    (t) => taskScopeFilter(_db, t, scope),
+  );
+
+  Stream<List<Task>> watchInbox(String workspaceId) =>
+      watchInboxIn(TaskScope.workspace(workspaceId));
+
+  Stream<List<Task>> watchInboxIn(TaskScope scope) => _watchList(
+    scope.workspaceIds.first,
+    (t) => taskScopeFilter(_db, t, scope) & t.status.equals('inbox'),
   );
 
   Stream<List<Task>> watchProjectTasks(
@@ -64,6 +88,21 @@ class TaskStore {
         t.projectId.equals(projectId) &
         (t.status.isIn(kPlanningStatuses) | _completedSince(t, completedSince)),
   );
+
+  /// The ids [scope] covers among [statuses] — what a search over several
+  /// workspaces narrows its hits to, so a member's Home search finds their own
+  /// work and not a colleague's task that happens to share the words.
+  Future<Set<String>> idsIn(TaskScope scope, List<String> statuses) async {
+    final rows =
+        await (_db.selectOnly(_db.tasks)
+              ..addColumns([_db.tasks.id])
+              ..where(
+                taskScopeFilter(_db, _db.tasks, scope) &
+                    _db.tasks.status.isIn(statuses),
+              ))
+            .get();
+    return {for (final row in rows) row.read(_db.tasks.id)!};
+  }
 
   /// "Completed on or after this instant, AND still worth showing today" — or
   /// nothing at all when the caller passed no boundary. A constant false keeps
@@ -102,10 +141,21 @@ class TaskStore {
     String workspaceId, {
     required int limit,
     int offset = 0,
+  }) => watchCompletedIn(
+    TaskScope.workspace(workspaceId),
+    limit: limit,
+    offset: offset,
+  );
+
+  /// [watchCompleted] over a [TaskScope].
+  Stream<List<Task>> watchCompletedIn(
+    TaskScope scope, {
+    required int limit,
+    int offset = 0,
   }) {
     final page = _db.select(_db.tasks)
       ..where(
-        (t) => t.workspaceId.equals(workspaceId) & t.status.equals('completed'),
+        (t) => taskScopeFilter(_db, t, scope) & t.status.equals('completed'),
       )
       ..orderBy([
         (t) => OrderingTerm(
@@ -264,6 +314,7 @@ class TaskStore {
               sortOrder: Value((patch['sortOrder'] as int?) ?? 0),
               createdAt: Value(DateTime.now().toUtc()),
               updatedAt: Value(DateTime.now().toUtc()),
+              createdBy: Value(userId),
             ),
           );
       if (tagIds.isNotEmpty) await replaceTaskTags(_db, id, tagIds);

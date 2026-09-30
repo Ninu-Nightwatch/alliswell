@@ -131,13 +131,13 @@ class _MarkdownImportScreenState extends ConsumerState<MarkdownImportScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
     try {
-      final workspaces = await ref.read(workspacesProvider.future);
-      if (workspaces.isEmpty) return;
+      final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+      if (workspaceId == null) return;
       final title = _title.text.trim().isEmpty
           ? doc.baseName
           : _title.text.trim();
       final noteId = await ref.read(noteStoreProvider).create(
-        workspaces.first.id,
+        workspaceId,
         {
           'title': title,
           'projectId': _projectId,

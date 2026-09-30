@@ -211,9 +211,8 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
           'tagIds': _tagIds,
         });
       } else {
-        final workspaces = await ref.read(workspacesProvider.future);
-        if (workspaces.isEmpty) throw StateError('No workspace available');
-        final workspaceId = workspaces.first.id;
+        final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+        if (workspaceId == null) throw StateError('No workspace available');
         final taskId = await ref.read(taskStoreProvider).create(workspaceId, {
           'title': _title.text.trim(),
           'status': ?widget.initialStatus,
@@ -225,6 +224,13 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
           if (_isUrgent) 'isUrgent': true,
           if (_tagIds.isNotEmpty) 'tagIds': _tagIds,
         });
+        // A task somebody adds is theirs until they give it away: in an
+        // organisation's workspaces its author is put on it.
+        await claimIfShared(
+          ref.read,
+          workspaceId: workspaceId,
+          taskId: taskId,
+        );
         // OPH-208: the task exists now, so the series has something to adopt —
         // its own day becomes the first occurrence instead of a duplicate.
         final rule = _repeatRule;

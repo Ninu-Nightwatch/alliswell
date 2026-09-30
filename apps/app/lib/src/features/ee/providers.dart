@@ -109,9 +109,8 @@ class EePermissionsController extends AsyncNotifier<EePermissions> {
     // — and null would be cached as "ungoverned" before the workspace even
     // arrived. Awaiting the future is the difference between asking and
     // guessing.
-    final workspaces = await ref.watch(workspacesProvider.future);
-    if (workspaces.isEmpty) return EePermissions.unknown;
-    final workspaceId = workspaces.first.id;
+    final workspaceId = await ref.watch(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) return EePermissions.unknown;
     // Keyed per user AND per workspace: one device serves two people, and one
     // person can hold different roles in different workspaces.
     _cacheKey = '$_kEePermissionsCachePrefix$userId::$workspaceId';

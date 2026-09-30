@@ -140,4 +140,78 @@ void main() {
     await tester.pumpAndSettle();
     expect(captured.read(currentWorkspaceProvider).value?.id, muhasebe.id);
   });
+
+  group('EE-296: in an organisation there is no personal space', () {
+    final own = WorkspaceSummary(
+      id: '01WSOWNAAAAAAAAAAAAAAAAAAA',
+      name: 'Ayla',
+      slug: 'ayla',
+      colorRgb: '#2563EB',
+      role: 'owner',
+      owned: true,
+    );
+
+    Future<ProviderContainer> containerWith(String? selected) async {
+      final container = ProviderContainer(
+        overrides: [
+          currentUserIdProvider.overrideWithValue(
+            '01USERAAAAAAAAAAAAAAAAAAAA',
+          ),
+          // The account's own workspace comes FIRST, as `/me` orders by id and
+          // an account's own space is usually its oldest.
+          workspacesProvider.overrideWith((ref) async => [own, muhasebe, saha]),
+          if (selected != null)
+            selectedWorkspaceIdProvider.overrideWith(
+              () => _FixedSelection(selected),
+            ),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.listen(activeWorkspaceIdProvider, (_, _) {});
+      await container.read(workspacesProvider.future);
+      return container;
+    }
+
+    test('the content screens read the first unit, never the own '
+        'workspace', () async {
+      final container = await containerWith(null);
+      expect(await container.read(activeWorkspaceIdProvider.future), muhasebe.id);
+      expect(container.read(inSharedWorkspacesProvider), isTrue);
+      expect(container.read(ownWorkspaceProvider)?.id, own.id);
+    });
+
+    test('…and the unit that is selected', () async {
+      final container = await containerWith(saha.id);
+      expect(await container.read(activeWorkspaceIdProvider.future), saha.id);
+    });
+
+    test('a selection that names the own workspace lands on a unit', () async {
+      final container = await containerWith(own.id);
+      expect(await container.read(activeWorkspaceIdProvider.future), muhasebe.id);
+    });
+
+    test('on one\'s own the one workspace is the content scope', () async {
+      final container = ProviderContainer(
+        overrides: [
+          currentUserIdProvider.overrideWithValue(
+            '01USERAAAAAAAAAAAAAAAAAAAA',
+          ),
+          workspacesProvider.overrideWith((ref) async => [own]),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.listen(activeWorkspaceIdProvider, (_, _) {});
+      expect(await container.read(activeWorkspaceIdProvider.future), own.id);
+      expect(container.read(inSharedWorkspacesProvider), isFalse);
+    });
+
+    testWidgets('the switcher never offers the own workspace', (tester) async {
+      await tester.pumpWidget(harness([own, muhasebe, saha]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('workspace-switcher')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(Key('workspace-option-${own.id}')), findsNothing);
+      expect(find.byKey(Key('workspace-option-${saha.id}')), findsOneWidget);
+    });
+  });
 }

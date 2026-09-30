@@ -170,8 +170,6 @@
       "teamSub": "Settings, members and invitations",
       "units": "Units",
       "unitsSub": "The units you run",
-      "assignments": "Assigned to me",
-      "assignmentsSub": "The work that is on you right now",
       "services": "Services",
       "servicesSub": "The request catalogue and which unit answers it",
       "myTickets": "My requests",
@@ -580,7 +578,8 @@
     "disconnectConfirmTitle": "Disconnect this calendar?",
     "disconnectConfirmBody": "AllisWell stops writing your tasks to it. Events already there stay where they are, and you can connect again any time.",
     "appleDisconnect": "Stop using this calendar",
-    "appleDisconnectBody": "AllisWell stops writing your tasks to Apple Calendar. Events already there stay. macOS/iOS keeps the permission itself — remove that in Settings if you want it gone."
+    "appleDisconnectBody": "AllisWell stops writing your tasks to Apple Calendar. Events already there stay. macOS/iOS keeps the permission itself — remove that in Settings if you want it gone.",
+    "notInShared": "Calendars connect to a person's own account. In your organisation's workspaces your work lives in AllisWell, and no calendar is connected here."
   },
   "tour": {
     "skip": "Skip",
@@ -637,7 +636,9 @@
     "SERVICE_APPROVER_CANNOT_DECIDE": "Nobody holding that role may answer approvals — give the role the approval permission or pick another one.",
     "APPROVAL_TARGET_NOT_EDITABLE": "Only a request can be corrected here.",
     "TICKET_FIELD_REQUIRED": "A required question is unanswered.",
-    "TICKET_NO_FORM": "This request was not filed on a form, so it has no answers to correct."
+    "TICKET_NO_FORM": "This request was not filed on a form, so it has no answers to correct.",
+    "TICKET_WORK_BOUND": "This task is a request's work, so it cannot be deleted. To give the work back, release the request.",
+    "TICKET_WORK_LOCKED": "This task is a request's work: its project, parent task, repeat and status follow the request."
   },
   "sync": {
     "noteConflict": "This note was edited on another device too — open it to compare.",
@@ -1887,10 +1888,7 @@
       "nobody": "Nobody is on this yet",
       "manage": "Change who is on this task",
       "noRoster": "There is nobody to assign here yet.",
-      "formerMember": "No longer in this unit",
-      "mineTitle": "Assigned to me",
-      "mineEmptyTitle": "Nothing on your plate",
-      "mineEmptyBody": "Tasks people put on you — or that you take yourself — show up here."
+      "formerMember": "No longer in this unit"
     },
     "notif": {
       "centerTitle": "Notifications",
@@ -3142,6 +3140,14 @@
       "empty": "No meeting notes in this unit yet",
       "emptyBody": "When a meeting's recording is uploaded, its summary and decisions appear here.",
       "counts": "{decisions} decisions · {ideas} ideas"
+    },
+    "ticketWork": {
+      "chip": "Request {ref}",
+      "explain": "This task is the request's work: completing it resolves the request, reopening it takes the request back. Title, priority and due date come from the request — if you change one, your value stays.",
+      "open": "Open the request",
+      "release": "Give the request back",
+      "releaseOffline": "Giving a request back needs a connection — the desk's rules decide it.",
+      "released": "You gave {ref} back — it is off your list."
     }
   },
   "perm": {

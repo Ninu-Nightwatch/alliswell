@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart' show ValueListenable, ValueNotifier;
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../features/workspaces/workspaces.dart';
+import '../features/tasks/providers.dart';
 import 'alarm_sound.dart';
 import '../core/persisted_prefs.dart';
 import 'planner.dart';
@@ -22,13 +22,21 @@ final alarmClockProvider = Provider<DateTime Function()>((_) => DateTime.now);
 /// under test — the OPH-111 `tourAutoStartProvider` idiom.
 final alarmOverlayAutoShowProvider = Provider<bool>((_) => true);
 
-/// Every alarm that may fire for the signed-in workspace (reminder rows ⋈ tasks
-/// + synthetic task-derived alarms — see [ReminderStore.watchAlarms]). Public so
-/// a container test can await the first emission.
-final alarmFeedProvider = StreamProvider.autoDispose<List<AlarmInput>>((ref) {
-  final workspace = ref.watch(currentWorkspaceProvider).value;
-  if (workspace == null) return Stream.value(const <AlarmInput>[]);
-  return ref.watch(reminderStoreProvider).watchAlarms(workspace.id);
+/// Every alarm that may fire for the signed-in person (reminder rows ⋈ tasks
+/// + synthetic task-derived alarms — see [ReminderStore.watchAlarmsIn]), over
+/// the same [taskScopeProvider] Home reads. Public so a container test can
+/// await the first emission.
+final alarmFeedProvider = StreamProvider.autoDispose<List<AlarmInput>>((
+  ref,
+) async* {
+  // Awaited, not read: "no alarms" while the scope is still loading would be
+  // an answer, and the ring decision would act on it.
+  final scope = await ref.watch(taskScopeProvider.selectAsync((s) => s));
+  if (scope == null) {
+    yield const <AlarmInput>[];
+    return;
+  }
+  yield* ref.watch(reminderStoreProvider).watchAlarmsIn(scope);
 });
 
 /// Effective fire instant: a snoozed alarm fires at [AlarmInput.snoozedUntil],

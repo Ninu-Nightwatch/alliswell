@@ -188,7 +188,7 @@ void main() {
       expect(
         await publishWidgetFromReplica(
           db,
-          workspaceId: ws,
+          scope: TaskScope.workspace(ws),
           now: DateTime.now(),
           host: host,
         ),
@@ -203,7 +203,7 @@ void main() {
       final host = FakeWidgetHost();
       await publishWidgetFromReplica(
         db,
-        workspaceId: ws,
+        scope: TaskScope.workspace(ws),
         now: DateTime.now(),
         host: host,
       );

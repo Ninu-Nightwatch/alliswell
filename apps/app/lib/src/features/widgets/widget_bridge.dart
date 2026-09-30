@@ -65,8 +65,9 @@ final widgetBridgeProvider = Provider<WidgetBridge>(
 /// the background turn's last step (OPH-334, `runHeadlessRefresh`).
 ///
 /// It asks the SAME questions [widgetSyncProvider] asks the live graph, one
-/// store call each: open tasks plus today's completed ones
-/// (`watchOpen(completedSince:)` — OPH-185's dimmed rows), every project (its
+/// store call each, over the same [TaskScope]: open tasks plus today's
+/// completed ones (`watchOpenIn(completedSince:)` — OPH-185's dimmed rows),
+/// every project (its
 /// color, and since OPH-336 the lists a widget can be set to), the user's
 /// date format, and since OPH-337 the two widget settings — a midnight redraw
 /// that forgot "Private widget" would put every title back while the phone
@@ -81,7 +82,7 @@ final widgetBridgeProvider = Provider<WidgetBridge>(
 /// take the alarms of that turn down with it.
 Future<bool> publishWidgetFromReplica(
   AwDatabase db, {
-  required String workspaceId,
+  required TaskScope scope,
   required DateTime now,
   WidgetHost? host,
 }) async {
@@ -89,8 +90,11 @@ Future<bool> publishWidgetFromReplica(
     final tasks = await TaskStore(
       db,
       () {},
-    ).watchOpen(workspaceId, completedSince: awStartOfDay(now)).first;
-    final projects = await ProjectStore(db, () {}).watchAll(workspaceId).first;
+    ).watchOpenIn(scope, completedSince: awStartOfDay(now)).first;
+    final projects = await ProjectStore(
+      db,
+      () {},
+    ).watchAllIn(scope.workspaceIds).first;
     // Read from localKv directly, as the rest of the turn does: in a process
     // this short a `PersistedChoice` answers its fallback, not the user's pick.
     final dateFormat =

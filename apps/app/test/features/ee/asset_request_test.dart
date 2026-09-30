@@ -119,6 +119,9 @@ void main() {
         databaseProvider.overrideWithValue(db),
         apiClientProvider.overrideWithValue(dio),
         syncEngineProvider.overrideWithValue(null),
+        // No engine at all: a write pokes every running one (EE-296), and
+        // this test runs none.
+        syncEnginesProvider.overrideWithValue(const {}),
         currentWorkspaceProvider.overrideWithValue(
           const AsyncValue.data(
             WorkspaceSummary(

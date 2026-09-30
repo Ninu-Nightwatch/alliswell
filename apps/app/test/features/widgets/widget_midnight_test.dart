@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/app_liveness.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
+import 'package:alliswell/src/features/tasks/data/task_scope.dart';
 import 'package:alliswell/src/features/widgets/widget_bridge.dart';
 import 'package:alliswell/src/features/widgets/widget_host.dart';
 import 'package:alliswell/src/notifications/headless.dart';
@@ -84,7 +85,7 @@ void main() {
     expect(
       await publishWidgetFromReplica(
         db,
-        workspaceId: ws,
+        scope: TaskScope.workspace(ws),
         now: lateEvening,
         host: host,
       ),
@@ -98,7 +99,7 @@ void main() {
     expect(
       await publishWidgetFromReplica(
         db,
-        workspaceId: ws,
+        scope: TaskScope.workspace(ws),
         now: pastMidnight,
         host: host,
       ),
@@ -139,7 +140,7 @@ void main() {
 
     await publishWidgetFromReplica(
       db,
-      workspaceId: ws,
+      scope: TaskScope.workspace(ws),
       now: pastMidnight,
       host: host,
     );
@@ -158,7 +159,7 @@ void main() {
       expect(
         await publishWidgetFromReplica(
           db,
-          workspaceId: ws,
+          scope: TaskScope.workspace(ws),
           now: pastMidnight,
           host: _BrokenHost(),
         ),
@@ -207,6 +208,80 @@ void main() {
 
     expect(host.updates, 0);
   });
+
+  test(
+    "a member's turn reads every unit it syncs, and draws only their work",
+    () async {
+      // A member of an organisation syncs each of their units, one
+      // `sync_states` row per unit. The turn used to read exactly one row,
+      // and a second one made that read throw: no alarms and no widget, on
+      // every background turn, for exactly the people with the most work.
+      const unitA = '01WSUNITAAAAAAAAAAAAAAAAAA';
+      const unitB = '01WSUNITBBBBBBBBBBBBBBBBBB';
+      const me = '01USERMEAAAAAAAAAAAAAAAAAA';
+      const colleague = '01USERCOLLEAGUEAAAAAAAAAAA';
+      for (final unit in [unitA, unitB]) {
+        await db
+            .into(db.syncStates)
+            .insert(
+              SyncStatesCompanion.insert(workspaceId: unit, clientId: 'C1'),
+            );
+      }
+      final soon = DateTime.now().add(const Duration(days: 2));
+      Future<void> task(
+        String tid,
+        String unit, {
+        required String createdBy,
+        String? assignee,
+      }) async {
+        await db
+            .into(db.tasks)
+            .insert(
+              TasksCompanion.insert(
+                id: id(tid),
+                workspaceId: unit,
+                title: 'Görev $tid',
+                dueAt: Value(soon),
+                createdBy: Value(createdBy),
+              ),
+            );
+        if (assignee == null) return;
+        await db
+            .into(db.taskAssignments)
+            .insert(
+              TaskAssignmentsCompanion.insert(
+                id: id('A$tid'),
+                workspaceId: unit,
+                taskId: id(tid),
+                userId: assignee,
+              ),
+            );
+      }
+
+      await task('MINE-A', unitA, createdBy: colleague, assignee: me);
+      await task('MADE-B', unitB, createdBy: me);
+      await task('THEIRS-A', unitA, createdBy: me, assignee: colleague);
+      await task('TEAM-B', unitB, createdBy: colleague);
+      // What the app left behind the last time it built this person's lists.
+      await rememberTaskScope(TaskScope.mine([unitA, unitB], me), userId: me);
+      addTearDown(() => localKv.remove(kTaskScopePrefKey));
+      final host = FakeWidgetHost();
+
+      await runHeadlessRefresh(
+        openDatabase: () => db,
+        liveness: AppLiveness(_NeverKv()),
+        widgetHost: host,
+      );
+
+      expect(host.updates, 1);
+      final snapshot = snapshotOf(host);
+      expect(rowOf(snapshot, id('MINE-A')), isNotNull);
+      expect(rowOf(snapshot, id('MADE-B')), isNotNull);
+      // Somebody else's work, in the same units: never on this phone's widget.
+      expect(rowOf(snapshot, id('THEIRS-A')), isNull);
+      expect(rowOf(snapshot, id('TEAM-B')), isNull);
+    },
+  );
 }
 
 /// A host whose platform side is missing — what a background isolate without

@@ -292,7 +292,9 @@ void main() {
               taskAssigneesProvider(
                 task,
               ).overrideWith((ref) => Stream.value(onIt)),
-              workspaceRosterProvider.overrideWith(
+              // The roster of the TASK's workspace (EE-296): a task opened
+              // from Home may live in a unit other than the one selected.
+              workspaceRosterOfProvider(ws).overrideWith(
                 (ref) => Stream.value(const [
                   MemberProfile(
                     id: 'P1',

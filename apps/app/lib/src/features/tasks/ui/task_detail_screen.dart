@@ -19,7 +19,10 @@ import '../../files/ui/attach_menu.dart';
 import '../../files/ui/file_widgets.dart';
 import '../../integrations/providers.dart';
 import '../../projects/data/project.dart';
+import '../../ee/ticket_work_providers.dart';
+import '../../ee/ui/ticket_work_section.dart';
 import '../../projects/providers.dart';
+import '../../workspaces/workspaces.dart';
 import '../../projects/ui/project_picker.dart';
 import '../../tags/ui/tag_input.dart';
 import '../../tags/ui/tag_manage_sheet.dart';
@@ -141,6 +144,10 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // EE-297: the request this task is the work of. What the request owns —
+    // deleting, cancelling, the project, the repeat — is not offered here;
+    // the server refuses each of them too (TICKET_WORK_BOUND / _LOCKED).
+    final work = ref.watch(ticketWorkOfTaskProvider(task.id)).value;
     return Scaffold(
       appBar: AppBar(
         title: Text('task.detailTitle'.tr()),
@@ -178,22 +185,23 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
           // OPH-184: the detail screen's delete, the same one the note editor
           // and project detail already had. The task was the app's most-used
           // object and the only one that could not be deleted anywhere.
-          IconButton(
-            key: const Key('task-delete'),
-            tooltip: 'task.deleteTooltip'.tr(),
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () async {
-              final router = GoRouter.of(context);
-              await deleteTaskWithUndo(context, ref, task);
-              // Pop first: the row is already hidden everywhere, and staying on
-              // the detail of a deleted task would strand the user.
-              if (router.canPop()) {
-                router.pop();
-              } else {
-                router.go(AppSection.home.path);
-              }
-            },
-          ),
+          if (work == null)
+            IconButton(
+              key: const Key('task-delete'),
+              tooltip: 'task.deleteTooltip'.tr(),
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () async {
+                final router = GoRouter.of(context);
+                await deleteTaskWithUndo(context, ref, task);
+                // Pop first: the row is already hidden everywhere, and staying on
+                // the detail of a deleted task would strand the user.
+                if (router.canPop()) {
+                  router.pop();
+                } else {
+                  router.go(AppSection.home.path);
+                }
+              },
+            ),
           PopupMenuButton<String>(
             key: const Key('task-quick-menu'),
             tooltip: 'quick.actions'.tr(),
@@ -245,6 +253,10 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                 ),
               ),
               const SizedBox(height: 4),
+              if (work != null) ...[
+                AwTicketWorkSection(work: work),
+                const SizedBox(height: AwSpace.x3),
+              ],
               // OPH-164: the task's own description — editable in place with
               // the title's autosave DNA; URLs are tappable in display mode.
               _DescriptionField(
@@ -284,10 +296,16 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                             ),
                             items: [
                               for (final status in kTaskStatuses)
-                                DropdownMenuItem(
-                                  value: status,
-                                  child: StatusLabel(status: status),
-                                ),
+                                // A request's work is not cancelled or
+                                // archived on its own: the request is.
+                                if (work == null ||
+                                    status == task.status ||
+                                    (status != 'cancelled' &&
+                                        status != 'archived'))
+                                  DropdownMenuItem(
+                                    value: status,
+                                    child: StatusLabel(status: status),
+                                  ),
                             ],
                             onChanged: (v) {
                               if (v != null && v != task.status) {
@@ -331,24 +349,32 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                     // Project picker (OPH-106): same color-dot entries as the
                     // create sheet; assigning a project also promotes an inbox
                     // capture to 'open' via the store rule (OPH-107).
-                    ProjectPickerField(
-                      key: const Key('detail-project'),
-                      projects:
-                          ref.watch(projectsControllerProvider).value ??
-                          const <Project>[],
-                      value: task.projectId,
-                      decoration: InputDecoration(
-                        labelText: 'task.project'.tr(),
+                    if (work == null) ...[
+                      ProjectPickerField(
+                        key: const Key('detail-project'),
+                        // The TASK's workspace (EE-296): opened from Home it
+                        // may live in a unit other than the one selected.
+                        projects:
+                            ref
+                                .watch(
+                                  workspaceProjectsProvider(task.workspaceId),
+                                )
+                                .value ??
+                            const <Project>[],
+                        value: task.projectId,
+                        decoration: InputDecoration(
+                          labelText: 'task.project'.tr(),
+                        ),
+                        onChanged: (v) {
+                          if (v != task.projectId) {
+                            _apply(
+                              (store, id) => store.update(id, {'projectId': v}),
+                            );
+                          }
+                        },
                       ),
-                      onChanged: (v) {
-                        if (v != task.projectId) {
-                          _apply(
-                            (store, id) => store.update(id, {'projectId': v}),
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 4),
+                      const SizedBox(height: 4),
+                    ],
                     SwitchListTile(
                       key: const Key('urgent-switch'),
                       contentPadding: EdgeInsets.zero,
@@ -388,7 +414,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                     // OPH-207 (DESIGN §25 R1): the Repeat switch. Turning it
                     // on opens the rule dialog immediately; the sentence and
                     // "Değiştir" appear underneath once a rule exists.
-                    RepeatRow(task: task),
+                    if (work == null) RepeatRow(task: task),
                     // OPH-177: a snoozed alarm says so here too — the task is
                     // still open, it is just quiet until then.
                     if (task.snoozedUntil != null &&
@@ -488,9 +514,19 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                 // when missing, manage from the same card (DESIGN §13).
                 child: TagInputField(
                   value: task.tagIds,
+                  workspaceId: task.workspaceId,
                   onChanged: (tagIds) =>
                       _apply((store, id) => store.setTags(id, tagIds)),
-                  onManage: () => showTagManageSheet(context),
+                  // Managing tags is the selected workspace's business; from
+                  // a task that lives in another unit it would manage the
+                  // wrong list, so the door is offered only at home.
+                  onManage:
+                      task.workspaceId ==
+                          ref.watch(
+                            currentWorkspaceProvider.select((w) => w.value?.id),
+                          )
+                      ? () => showTagManageSheet(context)
+                      : null,
                 ),
               ),
               const SizedBox(height: AwSpace.x3),

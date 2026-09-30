@@ -18,6 +18,11 @@ import '../workspaces.dart';
 /// build and most personal accounts. A switcher offering one choice is not a
 /// control, it is furniture — and the team chip beside it takes the same
 /// stance for the same reason.
+///
+/// It offers what [switchableWorkspacesOf] offers (EE-296): in an
+/// organisation, its workspaces and never the account's own — there is no
+/// personal space in an organisation's app, and the one the account owns only
+/// carries unsent drafts.
 class AwWorkspaceSwitcher extends ConsumerWidget {
   const AwWorkspaceSwitcher({super.key, this.compactWidth = 600});
 
@@ -26,7 +31,9 @@ class AwWorkspaceSwitcher extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final workspaces = ref.watch(workspacesProvider).value ?? const [];
+    final workspaces = switchableWorkspacesOf(
+      ref.watch(workspacesProvider).value ?? const [],
+    );
     if (workspaces.length < 2) return const SizedBox.shrink();
     final current = ref.watch(currentWorkspaceProvider).value;
     if (current == null) return const SizedBox.shrink();
@@ -75,7 +82,9 @@ class AwWorkspaceSwitcher extends ConsumerWidget {
   }
 
   Future<void> _open(BuildContext context, WidgetRef ref) async {
-    final workspaces = ref.read(workspacesProvider).value ?? const [];
+    final workspaces = switchableWorkspacesOf(
+      ref.read(workspacesProvider).value ?? const [],
+    );
     final current = ref.read(currentWorkspaceProvider).value;
     final chosen = await showModalBottomSheet<String>(
       context: context,

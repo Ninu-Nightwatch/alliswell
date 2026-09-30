@@ -12,8 +12,22 @@ import 'providers.dart';
 /// Returns false when the user should be told it did not work (R4) — signed out
 /// counts as "nothing to do", not as a failure.
 Future<bool> refreshSection(WidgetRef ref, AppSection section) async {
-  final engine = ref.read(syncEngineProvider);
-  var ok = engine == null || await engine.syncNow();
+  // Home and the Inbox are the person's own lists, drawn from every workspace
+  // this device syncs (in an organisation, every unit they are in); every
+  // other section shows the one on screen. Refreshing only that one left a
+  // task assigned in another unit off Home until its slower pull came round.
+  final engines = switch (section) {
+    AppSection.home || AppSection.inbox => [
+      ...ref.read(syncEnginesProvider).values,
+    ],
+    _ => [?ref.read(syncEngineProvider)],
+  };
+  var ok = true;
+  for (final synced in await Future.wait([
+    for (final engine in engines) engine.syncNow(),
+  ])) {
+    ok = ok && synced;
+  }
 
   switch (section) {
     case AppSection.home:

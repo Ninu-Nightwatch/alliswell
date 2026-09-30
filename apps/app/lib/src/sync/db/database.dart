@@ -108,6 +108,13 @@ class Tasks extends Table {
   DateTimeColumn get createdAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
 
+  /// v37: who made it. Server-owned (the push entity does not list it); a
+  /// device writes its own id on a local create so the row is right before the
+  /// server answers. In a workspace several people share, a person's own lists
+  /// show what they are on AND what they made that nobody took — this column
+  /// is the second half. Null on rows pulled before v37 until they come again.
+  TextColumn get createdBy => text().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -758,6 +765,12 @@ class Tickets extends Table {
   /// v36 until the server sends that row again.
   TextColumn get tagNames => text().nullable()();
 
+  /// v37 (EE-297): the task this request is WORKED through — the one its
+  /// assignees see on their Home. Server-owned: the server creates that task
+  /// when somebody is put on the request and keeps its people in step with the
+  /// request's. Null while nobody has ever been on it.
+  TextColumn get workTaskId => text().nullable()();
+
   /// When it stopped. Null while alive; the server stamps it on the move into
   /// a terminal state, and the archive sweep reads the pair.
   DateTimeColumn get terminalAt => dateTime().nullable()();
@@ -1187,8 +1200,11 @@ class AwDatabase extends _$AwDatabase {
   /// about.
   /// v35 → v36 (OPH-350): tickets.tag_names — the desk's words on a request,
   /// for a queue filter that needs no signal.
+  /// v36 → v37 (EE-296, EE-297): tasks.created_by — who made a task, for the
+  /// lists a person shares a workspace through — and tickets.work_task_id, the
+  /// task a request is worked through.
   @override
-  int get schemaVersion => 36;
+  int get schemaVersion => 37;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1207,6 +1223,7 @@ class AwDatabase extends _$AwDatabase {
       // has to create them explicitly — `createAll` alone would leave new users
       // on the scan path the v12 step exists to remove.
       await _createCompletedIndex();
+      await _createWorkIndexes();
     },
     onUpgrade: (m, from, to) async {
       // v2 (OPH-081): opt-in calendar mirroring. ADD COLUMN with a NOT NULL
@@ -1450,6 +1467,16 @@ class AwDatabase extends _$AwDatabase {
       if (from >= 24 && from < 36) {
         await m.addColumn(tickets, tickets.tagNames);
       }
+      // v37 (EE-296, EE-297): two nullable, server-owned columns. `tasks` has
+      // existed since v1; `tickets` only since v24 — an older device just got it
+      // CREATED above with the column already (the v34/v36 guard, same shape).
+      // Nothing to backfill here: the values are the server's, and the app
+      // pulls its shared workspaces once more so old rows receive them.
+      if (from < 37) {
+        if (from >= 1) await m.addColumn(tasks, tasks.createdBy);
+        if (from >= 24) await m.addColumn(tickets, tickets.workTaskId);
+        await _createWorkIndexes();
+      }
     },
   );
 
@@ -1459,6 +1486,20 @@ class AwDatabase extends _$AwDatabase {
     'CREATE INDEX IF NOT EXISTS idx_tasks_completed '
     'ON tasks (workspace_id, status, completed_at)',
   );
+
+  /// v37: the two lookups "whose work is this" makes for every task row of a
+  /// person's lists — who is on it, and which request it is worked for. A unit
+  /// can hold thousands of tasks; without these each list row is a scan.
+  Future<void> _createWorkIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_task_assignments_task_user '
+      'ON task_assignments (task_id, user_id)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_tickets_work_task '
+      'ON tickets (work_task_id)',
+    );
+  }
 }
 
 /// One-time v6 backfill (ADR-0013): fold existing rows' searchable text into

@@ -1936,6 +1936,17 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _createdByMeta = const VerificationMeta(
+    'createdBy',
+  );
+  @override
+  late final GeneratedColumn<String> createdBy = GeneratedColumn<String>(
+    'created_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1970,6 +1981,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
     revision,
     createdAt,
     updatedAt,
+    createdBy,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2220,6 +2232,12 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('created_by')) {
+      context.handle(
+        _createdByMeta,
+        createdBy.isAcceptableOrUnknown(data['created_by']!, _createdByMeta),
+      );
+    }
     return context;
   }
 
@@ -2357,6 +2375,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       ),
+      createdBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_by'],
+      ),
     );
   }
 
@@ -2410,6 +2432,13 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
   final int revision;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  /// v37: who made it. Server-owned (the push entity does not list it); a
+  /// device writes its own id on a local create so the row is right before the
+  /// server answers. In a workspace several people share, a person's own lists
+  /// show what they are on AND what they made that nobody took — this column
+  /// is the second half. Null on rows pulled before v37 until they come again.
+  final String? createdBy;
   const TaskRecord({
     required this.id,
     required this.workspaceId,
@@ -2443,6 +2472,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     required this.revision,
     this.createdAt,
     this.updatedAt,
+    this.createdBy,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2520,6 +2550,9 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     }
     if (!nullToAbsent || updatedAt != null) {
       map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    if (!nullToAbsent || createdBy != null) {
+      map['created_by'] = Variable<String>(createdBy);
     }
     return map;
   }
@@ -2600,6 +2633,9 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       updatedAt: updatedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(updatedAt),
+      createdBy: createdBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdBy),
     );
   }
 
@@ -2647,6 +2683,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       revision: serializer.fromJson<int>(json['revision']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      createdBy: serializer.fromJson<String?>(json['createdBy']),
     );
   }
   @override
@@ -2687,6 +2724,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       'revision': serializer.toJson<int>(revision),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'createdBy': serializer.toJson<String?>(createdBy),
     };
   }
 
@@ -2723,6 +2761,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     int? revision,
     Value<DateTime?> createdAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
+    Value<String?> createdBy = const Value.absent(),
   }) => TaskRecord(
     id: id ?? this.id,
     workspaceId: workspaceId ?? this.workspaceId,
@@ -2771,6 +2810,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     revision: revision ?? this.revision,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    createdBy: createdBy.present ? createdBy.value : this.createdBy,
   );
   TaskRecord copyWithCompanion(TasksCompanion data) {
     return TaskRecord(
@@ -2836,6 +2876,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       revision: data.revision.present ? data.revision.value : this.revision,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      createdBy: data.createdBy.present ? data.createdBy.value : this.createdBy,
     );
   }
 
@@ -2873,7 +2914,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           ..write('descriptionFold: $descriptionFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('createdBy: $createdBy')
           ..write(')'))
         .toString();
   }
@@ -2912,6 +2954,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     revision,
     createdAt,
     updatedAt,
+    createdBy,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -2948,7 +2991,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           other.descriptionFold == this.descriptionFold &&
           other.revision == this.revision &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.createdBy == this.createdBy);
 }
 
 class TasksCompanion extends UpdateCompanion<TaskRecord> {
@@ -2984,6 +3028,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
   final Value<int> revision;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
+  final Value<String?> createdBy;
   final Value<int> rowid;
   const TasksCompanion({
     this.id = const Value.absent(),
@@ -3018,6 +3063,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.createdBy = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TasksCompanion.insert({
@@ -3053,6 +3099,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.createdBy = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        workspaceId = Value(workspaceId),
@@ -3090,6 +3137,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     Expression<int>? revision,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<String>? createdBy,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3127,6 +3175,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
       if (revision != null) 'revision': revision,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (createdBy != null) 'created_by': createdBy,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3164,6 +3213,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     Value<int>? revision,
     Value<DateTime?>? createdAt,
     Value<DateTime?>? updatedAt,
+    Value<String?>? createdBy,
     Value<int>? rowid,
   }) {
     return TasksCompanion(
@@ -3201,6 +3251,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      createdBy: createdBy ?? this.createdBy,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3308,6 +3359,9 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (createdBy.present) {
+      map['created_by'] = Variable<String>(createdBy.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3349,6 +3403,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('createdBy: $createdBy, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -15778,6 +15833,17 @@ class $TicketsTable extends Tickets
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _workTaskIdMeta = const VerificationMeta(
+    'workTaskId',
+  );
+  @override
+  late final GeneratedColumn<String> workTaskId = GeneratedColumn<String>(
+    'work_task_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _terminalAtMeta = const VerificationMeta(
     'terminalAt',
   );
@@ -15891,6 +15957,7 @@ class $TicketsTable extends Tickets
     source,
     processType,
     tagNames,
+    workTaskId,
     terminalAt,
     slaDueAt,
     slaStatus,
@@ -16015,6 +16082,15 @@ class $TicketsTable extends Tickets
         tagNames.isAcceptableOrUnknown(data['tag_names']!, _tagNamesMeta),
       );
     }
+    if (data.containsKey('work_task_id')) {
+      context.handle(
+        _workTaskIdMeta,
+        workTaskId.isAcceptableOrUnknown(
+          data['work_task_id']!,
+          _workTaskIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('terminal_at')) {
       context.handle(
         _terminalAtMeta,
@@ -16133,6 +16209,10 @@ class $TicketsTable extends Tickets
         DriftSqlType.string,
         data['${effectivePrefix}tag_names'],
       ),
+      workTaskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}work_task_id'],
+      ),
       terminalAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}terminal_at'],
@@ -16224,6 +16304,12 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
   /// v36 until the server sends that row again.
   final String? tagNames;
 
+  /// v37 (EE-297): the task this request is WORKED through — the one its
+  /// assignees see on their Home. Server-owned: the server creates that task
+  /// when somebody is put on the request and keeps its people in step with the
+  /// request's. Null while nobody has ever been on it.
+  final String? workTaskId;
+
   /// When it stopped. Null while alive; the server stamps it on the move into
   /// a terminal state, and the archive sweep reads the pair.
   final DateTime? terminalAt;
@@ -16271,6 +16357,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     required this.source,
     this.processType,
     this.tagNames,
+    this.workTaskId,
     this.terminalAt,
     this.slaDueAt,
     this.slaStatus,
@@ -16310,6 +16397,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     }
     if (!nullToAbsent || tagNames != null) {
       map['tag_names'] = Variable<String>(tagNames);
+    }
+    if (!nullToAbsent || workTaskId != null) {
+      map['work_task_id'] = Variable<String>(workTaskId);
     }
     if (!nullToAbsent || terminalAt != null) {
       map['terminal_at'] = Variable<DateTime>(terminalAt);
@@ -16366,6 +16456,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       tagNames: tagNames == null && nullToAbsent
           ? const Value.absent()
           : Value(tagNames),
+      workTaskId: workTaskId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(workTaskId),
       terminalAt: terminalAt == null && nullToAbsent
           ? const Value.absent()
           : Value(terminalAt),
@@ -16413,6 +16506,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       source: serializer.fromJson<String>(json['source']),
       processType: serializer.fromJson<String?>(json['processType']),
       tagNames: serializer.fromJson<String?>(json['tagNames']),
+      workTaskId: serializer.fromJson<String?>(json['workTaskId']),
       terminalAt: serializer.fromJson<DateTime?>(json['terminalAt']),
       slaDueAt: serializer.fromJson<DateTime?>(json['slaDueAt']),
       slaStatus: serializer.fromJson<String?>(json['slaStatus']),
@@ -16441,6 +16535,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       'source': serializer.toJson<String>(source),
       'processType': serializer.toJson<String?>(processType),
       'tagNames': serializer.toJson<String?>(tagNames),
+      'workTaskId': serializer.toJson<String?>(workTaskId),
       'terminalAt': serializer.toJson<DateTime?>(terminalAt),
       'slaDueAt': serializer.toJson<DateTime?>(slaDueAt),
       'slaStatus': serializer.toJson<String?>(slaStatus),
@@ -16467,6 +16562,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     String? source,
     Value<String?> processType = const Value.absent(),
     Value<String?> tagNames = const Value.absent(),
+    Value<String?> workTaskId = const Value.absent(),
     Value<DateTime?> terminalAt = const Value.absent(),
     Value<DateTime?> slaDueAt = const Value.absent(),
     Value<String?> slaStatus = const Value.absent(),
@@ -16494,6 +16590,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     source: source ?? this.source,
     processType: processType.present ? processType.value : this.processType,
     tagNames: tagNames.present ? tagNames.value : this.tagNames,
+    workTaskId: workTaskId.present ? workTaskId.value : this.workTaskId,
     terminalAt: terminalAt.present ? terminalAt.value : this.terminalAt,
     slaDueAt: slaDueAt.present ? slaDueAt.value : this.slaDueAt,
     slaStatus: slaStatus.present ? slaStatus.value : this.slaStatus,
@@ -16529,6 +16626,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           ? data.processType.value
           : this.processType,
       tagNames: data.tagNames.present ? data.tagNames.value : this.tagNames,
+      workTaskId: data.workTaskId.present
+          ? data.workTaskId.value
+          : this.workTaskId,
       terminalAt: data.terminalAt.present
           ? data.terminalAt.value
           : this.terminalAt,
@@ -16561,6 +16661,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           ..write('source: $source, ')
           ..write('processType: $processType, ')
           ..write('tagNames: $tagNames, ')
+          ..write('workTaskId: $workTaskId, ')
           ..write('terminalAt: $terminalAt, ')
           ..write('slaDueAt: $slaDueAt, ')
           ..write('slaStatus: $slaStatus, ')
@@ -16589,6 +16690,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     source,
     processType,
     tagNames,
+    workTaskId,
     terminalAt,
     slaDueAt,
     slaStatus,
@@ -16616,6 +16718,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           other.source == this.source &&
           other.processType == this.processType &&
           other.tagNames == this.tagNames &&
+          other.workTaskId == this.workTaskId &&
           other.terminalAt == this.terminalAt &&
           other.slaDueAt == this.slaDueAt &&
           other.slaStatus == this.slaStatus &&
@@ -16641,6 +16744,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
   final Value<String> source;
   final Value<String?> processType;
   final Value<String?> tagNames;
+  final Value<String?> workTaskId;
   final Value<DateTime?> terminalAt;
   final Value<DateTime?> slaDueAt;
   final Value<String?> slaStatus;
@@ -16665,6 +16769,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     this.source = const Value.absent(),
     this.processType = const Value.absent(),
     this.tagNames = const Value.absent(),
+    this.workTaskId = const Value.absent(),
     this.terminalAt = const Value.absent(),
     this.slaDueAt = const Value.absent(),
     this.slaStatus = const Value.absent(),
@@ -16690,6 +16795,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     required String source,
     this.processType = const Value.absent(),
     this.tagNames = const Value.absent(),
+    this.workTaskId = const Value.absent(),
     this.terminalAt = const Value.absent(),
     this.slaDueAt = const Value.absent(),
     this.slaStatus = const Value.absent(),
@@ -16720,6 +16826,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     Expression<String>? source,
     Expression<String>? processType,
     Expression<String>? tagNames,
+    Expression<String>? workTaskId,
     Expression<DateTime>? terminalAt,
     Expression<DateTime>? slaDueAt,
     Expression<String>? slaStatus,
@@ -16745,6 +16852,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
       if (source != null) 'source': source,
       if (processType != null) 'process_type': processType,
       if (tagNames != null) 'tag_names': tagNames,
+      if (workTaskId != null) 'work_task_id': workTaskId,
       if (terminalAt != null) 'terminal_at': terminalAt,
       if (slaDueAt != null) 'sla_due_at': slaDueAt,
       if (slaStatus != null) 'sla_status': slaStatus,
@@ -16772,6 +16880,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     Value<String>? source,
     Value<String?>? processType,
     Value<String?>? tagNames,
+    Value<String?>? workTaskId,
     Value<DateTime?>? terminalAt,
     Value<DateTime?>? slaDueAt,
     Value<String?>? slaStatus,
@@ -16797,6 +16906,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
       source: source ?? this.source,
       processType: processType ?? this.processType,
       tagNames: tagNames ?? this.tagNames,
+      workTaskId: workTaskId ?? this.workTaskId,
       terminalAt: terminalAt ?? this.terminalAt,
       slaDueAt: slaDueAt ?? this.slaDueAt,
       slaStatus: slaStatus ?? this.slaStatus,
@@ -16852,6 +16962,9 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     if (tagNames.present) {
       map['tag_names'] = Variable<String>(tagNames.value);
     }
+    if (workTaskId.present) {
+      map['work_task_id'] = Variable<String>(workTaskId.value);
+    }
     if (terminalAt.present) {
       map['terminal_at'] = Variable<DateTime>(terminalAt.value);
     }
@@ -16901,6 +17014,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
           ..write('source: $source, ')
           ..write('processType: $processType, ')
           ..write('tagNames: $tagNames, ')
+          ..write('workTaskId: $workTaskId, ')
           ..write('terminalAt: $terminalAt, ')
           ..write('slaDueAt: $slaDueAt, ')
           ..write('slaStatus: $slaStatus, ')
@@ -23486,6 +23600,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
+      Value<String?> createdBy,
       Value<int> rowid,
     });
 typedef $$TasksTableUpdateCompanionBuilder =
@@ -23522,6 +23637,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
+      Value<String?> createdBy,
       Value<int> rowid,
     });
 
@@ -23690,6 +23806,11 @@ class $$TasksTableFilterComposer extends Composer<_$AwDatabase, $TasksTable> {
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -23861,6 +23982,11 @@ class $$TasksTableOrderingComposer extends Composer<_$AwDatabase, $TasksTable> {
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TasksTableAnnotationComposer
@@ -23997,6 +24123,9 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get createdBy =>
+      $composableBuilder(column: $table.createdBy, builder: (column) => column);
 }
 
 class $$TasksTableTableManager
@@ -24059,6 +24188,7 @@ class $$TasksTableTableManager
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<String?> createdBy = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TasksCompanion(
                 id: id,
@@ -24093,6 +24223,7 @@ class $$TasksTableTableManager
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                createdBy: createdBy,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -24129,6 +24260,7 @@ class $$TasksTableTableManager
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<String?> createdBy = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TasksCompanion.insert(
                 id: id,
@@ -24163,6 +24295,7 @@ class $$TasksTableTableManager
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                createdBy: createdBy,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -30193,6 +30326,7 @@ typedef $$TicketsTableCreateCompanionBuilder =
       required String source,
       Value<String?> processType,
       Value<String?> tagNames,
+      Value<String?> workTaskId,
       Value<DateTime?> terminalAt,
       Value<DateTime?> slaDueAt,
       Value<String?> slaStatus,
@@ -30219,6 +30353,7 @@ typedef $$TicketsTableUpdateCompanionBuilder =
       Value<String> source,
       Value<String?> processType,
       Value<String?> tagNames,
+      Value<String?> workTaskId,
       Value<DateTime?> terminalAt,
       Value<DateTime?> slaDueAt,
       Value<String?> slaStatus,
@@ -30302,6 +30437,11 @@ class $$TicketsTableFilterComposer
 
   ColumnFilters<String> get tagNames => $composableBuilder(
     column: $table.tagNames,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workTaskId => $composableBuilder(
+    column: $table.workTaskId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -30425,6 +30565,11 @@ class $$TicketsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get workTaskId => $composableBuilder(
+    column: $table.workTaskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get terminalAt => $composableBuilder(
     column: $table.terminalAt,
     builder: (column) => ColumnOrderings(column),
@@ -30529,6 +30674,11 @@ class $$TicketsTableAnnotationComposer
   GeneratedColumn<String> get tagNames =>
       $composableBuilder(column: $table.tagNames, builder: (column) => column);
 
+  GeneratedColumn<String> get workTaskId => $composableBuilder(
+    column: $table.workTaskId,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get terminalAt => $composableBuilder(
     column: $table.terminalAt,
     builder: (column) => column,
@@ -30605,6 +30755,7 @@ class $$TicketsTableTableManager
                 Value<String> source = const Value.absent(),
                 Value<String?> processType = const Value.absent(),
                 Value<String?> tagNames = const Value.absent(),
+                Value<String?> workTaskId = const Value.absent(),
                 Value<DateTime?> terminalAt = const Value.absent(),
                 Value<DateTime?> slaDueAt = const Value.absent(),
                 Value<String?> slaStatus = const Value.absent(),
@@ -30629,6 +30780,7 @@ class $$TicketsTableTableManager
                 source: source,
                 processType: processType,
                 tagNames: tagNames,
+                workTaskId: workTaskId,
                 terminalAt: terminalAt,
                 slaDueAt: slaDueAt,
                 slaStatus: slaStatus,
@@ -30655,6 +30807,7 @@ class $$TicketsTableTableManager
                 required String source,
                 Value<String?> processType = const Value.absent(),
                 Value<String?> tagNames = const Value.absent(),
+                Value<String?> workTaskId = const Value.absent(),
                 Value<DateTime?> terminalAt = const Value.absent(),
                 Value<DateTime?> slaDueAt = const Value.absent(),
                 Value<String?> slaStatus = const Value.absent(),
@@ -30679,6 +30832,7 @@ class $$TicketsTableTableManager
                 source: source,
                 processType: processType,
                 tagNames: tagNames,
+                workTaskId: workTaskId,
                 terminalAt: terminalAt,
                 slaDueAt: slaDueAt,
                 slaStatus: slaStatus,

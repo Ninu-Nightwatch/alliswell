@@ -224,9 +224,8 @@ class _SoundPickerSheetState extends ConsumerState<_SoundPickerSheet> {
     if (picked.isEmpty || !mounted) return;
     setState(() => _busy = true);
     try {
-      final workspaces = await ref.read(workspacesProvider.future);
-      if (workspaces.isEmpty) return;
-      final workspaceId = workspaces.first.id;
+      final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+      if (workspaceId == null) return;
       final folders = ref.read(foldersProvider).value ?? const [];
       var folderId = folders
           .where((f) => f.parentId == null && f.name == kRingtoneFolderName)

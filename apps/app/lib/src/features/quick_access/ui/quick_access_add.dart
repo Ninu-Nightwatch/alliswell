@@ -60,11 +60,11 @@ Future<void> toggleQuickAccess(
     await store.remove(existing.id);
     return;
   }
-  final workspaces = await ref.read(workspacesProvider.future);
+  final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
   final userId = ref.read(currentUserIdProvider);
-  if (workspaces.isEmpty || userId == null) return;
+  if (workspaceId == null || userId == null) return;
   final id = await store.add(
-    workspaceId: workspaces.first.id,
+    workspaceId: workspaceId,
     userId: userId,
     kind: kind,
     targetId: targetId,
@@ -102,13 +102,13 @@ Future<void> showQuickLinkDialog(BuildContext context, WidgetRef ref) async {
   );
   if (result == null) return;
 
-  final workspaces = await ref.read(workspacesProvider.future);
+  final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
   final userId = ref.read(currentUserIdProvider);
-  if (workspaces.isEmpty || userId == null) return;
+  if (workspaceId == null || userId == null) return;
   final id = await ref
       .read(quickAccessStoreProvider)
       .add(
-        workspaceId: workspaces.first.id,
+        workspaceId: workspaceId,
         userId: userId,
         kind: QuickKind.url,
         url: result.url,

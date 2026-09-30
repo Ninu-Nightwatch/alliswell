@@ -428,6 +428,12 @@ TasksCompanion taskCompanion(Map<String, dynamic> d) => TasksCompanion.insert(
   revision: Value((d['revision'] as int?) ?? 0),
   createdAt: _dateValue(d['createdAt']),
   updatedAt: _dateValue(d['updatedAt']),
+  // v37: server-owned. Only when the server SAYS — a server from before the
+  // field sends no key, and writing null then would erase the id this device
+  // stamped on its own create.
+  createdBy: d.containsKey('createdBy')
+      ? Value(d['createdBy'] as String?)
+      : const Value.absent(),
 );
 
 NotesCompanion noteCompanion(Map<String, dynamic> d) => NotesCompanion.insert(
@@ -662,6 +668,11 @@ TicketsCompanion ticketCompanion(Map<String, dynamic> data) => TicketsCompanion(
   // be a second vocabulary.
   slaDueAt: _dateValue(data['slaDueAt']),
   slaStatus: Value(data['slaStatus'] as String?),
+  // EE-297 (v37): the task this request is worked through. Server-owned; kept
+  // untouched when a server that predates it sends no key.
+  workTaskId: data.containsKey('workTaskId')
+      ? Value(data['workTaskId'] as String?)
+      : const Value.absent(),
   createdAt: _dateValue(data['createdAt']),
   revision: Value((data['revision'] as num?)?.toInt() ?? 0),
   updatedAt: _dateValue(data['updatedAt']),

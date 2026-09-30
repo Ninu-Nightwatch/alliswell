@@ -189,13 +189,12 @@ class AiBubbleController extends Notifier<AiBubbleState> {
   /// lazy, so `.value` can be null on a first read even when signed in.
   Future<({AiStreamClient client, String workspaceId})?> _prepare() async {
     final client = ref.read(aiStreamClientProvider);
-    final workspaces = await ref.read(workspacesProvider.future);
-    final workspace = workspaces.isEmpty ? null : workspaces.first;
-    if (client == null || workspace == null) {
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (client == null || workspaceId == null) {
       state = _machine.offline(state);
       return null;
     }
-    return (client: client, workspaceId: workspace.id);
+    return (client: client, workspaceId: workspaceId);
   }
 
   /// One streaming turn: the message list is HISTORY as-is (the send/retry
@@ -373,9 +372,9 @@ class AiBubbleController extends Notifier<AiBubbleState> {
     String text, {
     required String source,
   }) async {
-    final workspaces = await ref.read(workspacesProvider.future);
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
     final status = ref.read(aiStatusProvider).value;
-    if (workspaces.isEmpty || status == null || !status.configured) {
+    if (workspaceId == null || status == null || !status.configured) {
       return AiRouteOffline(text);
     }
     final projectNames =
@@ -386,7 +385,7 @@ class AiBubbleController extends Notifier<AiBubbleState> {
       final proposal = await ref
           .read(aiApiProvider)
           .extract(
-            workspaces.first.id,
+            workspaceId,
             text: text,
             source: source,
             defaultTaskTime: ref.read(defaultTaskTimeProvider),
@@ -406,11 +405,11 @@ class AiBubbleController extends Notifier<AiBubbleState> {
   /// One-tap Inbox capture (§12.6 GTD semantics) — works with zero AI. The
   /// first line (clipped) is the title; a longer transcript spills to the body.
   Future<void> captureToInbox(String text) async {
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty) return;
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) return;
     final trimmed = text.trim();
     final title = clipTaskTitle(trimmed);
-    await ref.read(taskStoreProvider).create(workspaces.first.id, {
+    await createOwnTask(ref.read, {
       'title': title,
       'status': 'inbox',
       if (trimmed.length > title.length) 'description': trimmed,
@@ -421,12 +420,12 @@ class AiBubbleController extends Notifier<AiBubbleState> {
   /// that always works). First line (clipped) is the title, the whole text is
   /// the body.
   Future<void> shareToNote(SharedPayload shared) async {
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty) return;
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) return;
     final body = shared.url != null
         ? '${shared.text}\n${shared.url}'.trim()
         : shared.text.trim();
-    await ref.read(noteStoreProvider).create(workspaces.first.id, {
+    await ref.read(noteStoreProvider).create(workspaceId, {
       'title': clipTaskTitle(body),
       'contentMarkdown': body,
     });

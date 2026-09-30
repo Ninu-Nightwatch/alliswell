@@ -169,8 +169,6 @@
       "teamSub": "Ayarlar, üyeler ve davetler",
       "units": "Birimler",
       "unitsSub": "Yönettiğiniz birimler",
-      "assignments": "Bana atananlar",
-      "assignmentsSub": "Şu anda üzerinizde olan işler",
       "services": "Servisler",
       "servicesSub": "Talep katalogu ve hangi birimin baktığı",
       "myTickets": "Taleplerim",
@@ -579,7 +577,8 @@
     "disconnectConfirmTitle": "Takvim bağlantısı kesilsin mi?",
     "disconnectConfirmBody": "AllisWell görevlerini oraya yazmayı bırakır. Takvimde olanlar yerinde kalır, istediğin zaman yeniden bağlayabilirsin.",
     "appleDisconnect": "Bu takvimi kullanmayı bırak",
-    "appleDisconnectBody": "AllisWell görevlerini Apple Takvim'e yazmayı bırakır. Takvimde olanlar kalır. İznin kendisi macOS/iOS'te duruyor — tamamen kaldırmak istersen Ayarlar'dan al."
+    "appleDisconnectBody": "AllisWell görevlerini Apple Takvim'e yazmayı bırakır. Takvimde olanlar kalır. İznin kendisi macOS/iOS'te duruyor — tamamen kaldırmak istersen Ayarlar'dan al.",
+    "notInShared": "Takvimler kişinin kendi hesabına bağlanır. Kurumunuzun alanlarında işleriniz AllisWell'de durur; burada takvim bağlanmaz."
   },
   "tour": {
     "skip": "Atla",
@@ -636,7 +635,9 @@
     "SERVICE_APPROVER_CANNOT_DECIDE": "Bu rolü taşıyanlar onay veremiyor — role onay verme yetkisi verin ya da başka bir rol seçin.",
     "APPROVAL_TARGET_NOT_EDITABLE": "Burada yalnız bir talep düzeltilebilir.",
     "TICKET_FIELD_REQUIRED": "Zorunlu bir soru cevapsız kaldı.",
-    "TICKET_NO_FORM": "Bu talep bir formla açılmadı; düzeltilecek cevabı yok."
+    "TICKET_NO_FORM": "Bu talep bir formla açılmadı; düzeltilecek cevabı yok.",
+    "TICKET_WORK_BOUND": "Bu görev bir talebin işi; silinemez. İşi bırakmak için talebi bırak.",
+    "TICKET_WORK_LOCKED": "Bu görev bir talebin işi: projesi, üst görevi, tekrarı ve durumu talebe bağlı."
   },
   "sync": {
     "noteConflict": "Bu not başka bir cihazda da düzenlendi — karşılaştırmak için aç.",
@@ -1886,10 +1887,7 @@
       "nobody": "Bu işte henüz kimse yok",
       "manage": "Bu işte kimlerin olacağını değiştir",
       "noRoster": "Burada atanacak kimse yok.",
-      "formerMember": "Artık bu birimde değil",
-      "mineTitle": "Bana atananlar",
-      "mineEmptyTitle": "Üzerinizde iş yok",
-      "mineEmptyBody": "Size verilen ya da kendi üstünüze aldığınız işler burada görünür."
+      "formerMember": "Artık bu birimde değil"
     },
     "notif": {
       "centerTitle": "Bildirimler",
@@ -3141,6 +3139,14 @@
       "empty": "Bu birimde henüz toplantı notu yok",
       "emptyBody": "Bir toplantının kaydı yüklendiğinde özeti ve kararları burada görünür.",
       "counts": "{decisions} karar · {ideas} fikir"
+    },
+    "ticketWork": {
+      "chip": "Talep {ref}",
+      "explain": "Bu görev talebin işidir: tamamlamak talebi çözer, geri açmak talebi yeniden işe alır. Başlık, öncelik ve tarih talepten gelir; birini değiştirirsen senin değerin kalır.",
+      "open": "Talebi aç",
+      "release": "Talebi bırak",
+      "releaseOffline": "Talebi bırakmak bağlantı ister — kararı masanın kuralları verir.",
+      "released": "{ref} talebini bıraktın — listenden çıktı."
     }
   },
   "perm": {

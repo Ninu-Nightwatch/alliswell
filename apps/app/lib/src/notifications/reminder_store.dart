@@ -4,6 +4,7 @@ import '../sync/db/database.dart';
 import '../sync/outbox.dart';
 import '../sync/streams.dart';
 import 'planner.dart';
+import '../features/tasks/data/task_scope.dart';
 
 /// Reminder-id prefix for alarms derived straight from a task row while the
 /// server's reminder is still in flight (see [ReminderStore.watchAlarms]).
@@ -111,8 +112,14 @@ class ReminderStore {
   /// A task that owns a reminder row of a kind in ANY status never synthesizes
   /// THAT kind — an acknowledged alarm must stay acknowledged. Per kind, since
   /// acknowledging the 22:42 nudge says nothing about the 22:45 deadline.
-  Stream<List<AlarmInput>> watchAlarms(String workspaceId) {
-    final query = _alarmRowsQuery(workspaceId);
+  Stream<List<AlarmInput>> watchAlarms(String workspaceId) =>
+      watchAlarmsIn(TaskScope.workspace(workspaceId));
+
+  /// [watchAlarms] over a [TaskScope]. For a member of an organisation that
+  /// is THEIR work only: a colleague's reminder on a task in the same unit is
+  /// the colleague's alarm, and an alarm is the loudest thing this app does.
+  Stream<List<AlarmInput>> watchAlarmsIn(TaskScope scope) {
+    final query = _alarmRowsQuery(scope);
 
     final fromRows = query.watch().map(
       (rows) => [
@@ -123,7 +130,7 @@ class ReminderStore {
 
     // Tasks that want at least one alarm, in a state where one may fire. The
     // per-kind decision is [taskAlarmInstants]'; this only narrows the query.
-    final wanting = _wantingTasksQuery(workspaceId).watch();
+    final wanting = _wantingTasksQuery(scope).watch();
 
     // '<taskId>|<kind>' pairs that already own a reminder row in ANY status.
     final covered = _db
@@ -142,9 +149,13 @@ class ReminderStore {
   /// [mergeAlarms] behind both — because two implementations of "which alarms
   /// exist" is exactly how a headless refresh ends up scheduling something the
   /// app would not have (OPH-299's lesson, one layer down).
-  Future<List<AlarmInput>> readAlarms(String workspaceId) async {
-    final rows = await _alarmRowsQuery(workspaceId).get();
-    final tasks = await _wantingTasksQuery(workspaceId).get();
+  Future<List<AlarmInput>> readAlarms(String workspaceId) =>
+      readAlarmsIn(TaskScope.workspace(workspaceId));
+
+  /// [readAlarms] over a [TaskScope] — the background turn's read.
+  Future<List<AlarmInput>> readAlarmsIn(TaskScope scope) async {
+    final rows = await _alarmRowsQuery(scope).get();
+    final tasks = await _wantingTasksQuery(scope).get();
     final covered = await _db.select(_db.reminders).get();
     return mergeAlarms(
       [
@@ -159,7 +170,7 @@ class ReminderStore {
   /// Reminder rows that may still fire, joined to their task — reminder rows
   /// carry no workspace id, so the join is what scopes them.
   JoinedSelectStatement<HasResultSet, dynamic> _alarmRowsQuery(
-    String workspaceId,
+    TaskScope scope,
   ) =>
       (_db.select(_db.reminders)..where(
             (r) => r.status.isIn(const ['scheduled', 'snoozed', 'delivered']),
@@ -167,14 +178,14 @@ class ReminderStore {
           .join([
             innerJoin(_db.tasks, _db.tasks.id.equalsExp(_db.reminders.taskId)),
           ])
-        ..where(_db.tasks.workspaceId.equals(workspaceId));
+        ..where(taskScopeFilter(_db, _db.tasks, scope));
 
   SimpleSelectStatement<$TasksTable, TaskRecord> _wantingTasksQuery(
-    String workspaceId,
+    TaskScope scope,
   ) => _db.select(_db.tasks)
     ..where(
       (t) =>
-          t.workspaceId.equals(workspaceId) &
+          taskScopeFilter(_db, t, scope) &
           t.status.isNotIn(const ['completed', 'cancelled', 'archived']) &
           t.alarmsMutedAt.isNull() &
           (t.remindAt.isNotNull() |

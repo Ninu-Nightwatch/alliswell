@@ -134,9 +134,9 @@ class _CaptureTile extends ConsumerWidget {
     )) {
       return;
     }
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty) return;
-    await ref.read(noteStoreProvider).create(workspaces.first.id, {
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) return;
+    await ref.read(noteStoreProvider).create(workspaceId, {
       'title': task.title,
     });
     await ref.read(taskStoreProvider).delete(task.id);

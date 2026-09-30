@@ -35,7 +35,9 @@ class Assignee {
   bool get isKnown => colorRgb != null;
 }
 
-/// Everyone on every task in the current workspace, keyed by task id.
+/// Everyone on every task in the workspaces this device syncs, keyed by task
+/// id — a member's Home holds tasks from every unit they are in, and a row
+/// from a unit that is not on screen must still show who is on it.
 ///
 /// ONE stream for the whole list, deliberately. A `family` per task would open
 /// a query per visible row — two hundred of them on a long list — and the app
@@ -49,13 +51,13 @@ class Assignee {
 final workspaceAssigneesProvider = StreamProvider<Map<String, List<Assignee>>>((
   ref,
 ) {
-  final workspace = ref.watch(currentWorkspaceProvider).value;
-  if (workspace == null) {
+  final workspaceIds = ref.watch(syncWorkspaceIdsProvider);
+  if (workspaceIds.isEmpty) {
     return Stream.value(const <String, List<Assignee>>{});
   }
   final db = ref.watch(databaseProvider);
   final assignments = db.select(db.taskAssignments)
-    ..where((a) => a.workspaceId.equals(workspace.id))
+    ..where((a) => a.workspaceId.isIn(workspaceIds))
     ..orderBy([(a) => OrderingTerm.asc(a.assignedAt)]);
   return assignments
       .join([
@@ -123,25 +125,6 @@ final taskAssigneesProvider = StreamProvider.family<List<Assignee>, String>((
           );
         }).toList(),
       );
-});
-
-/// The set of task ids assigned to the signed-in person, for the list filter.
-///
-/// A SET rather than a list of tasks: the Tasks screen already has its own
-/// query with its own sorting and paging, and a second source of tasks would
-/// be a second answer to "what is in this list". This only narrows it.
-final myAssignedTaskIdsProvider = StreamProvider<Set<String>>((ref) {
-  final userId = ref.watch(currentUserIdProvider);
-  final workspace = ref.watch(currentWorkspaceProvider).value;
-  if (userId == null || workspace == null) {
-    return Stream.value(const <String>{});
-  }
-  final db = ref.watch(databaseProvider);
-  return (db.select(db.taskAssignments)..where(
-        (a) => a.userId.equals(userId) & a.workspaceId.equals(workspace.id),
-      ))
-      .watch()
-      .map((rows) => rows.map((r) => r.taskId).toSet());
 });
 
 /// The people this workspace can assign to — the roster, as the picker reads it.
@@ -251,6 +234,6 @@ class AssignmentStore {
 final assignmentStoreProvider = Provider<AssignmentStore>(
   (ref) => AssignmentStore(
     ref.watch(databaseProvider),
-    onMutation: () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+    onMutation: () => pokeSync(ref),
   ),
 );

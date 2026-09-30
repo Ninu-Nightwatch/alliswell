@@ -211,9 +211,14 @@ class SyncEngine {
       db.syncStates,
     )..where((s) => s.workspaceId.equals(workspaceId))).getSingleOrNull();
     if (existing != null) return existing;
+    // One client id per DEVICE, not per workspace: the device registry and
+    // "This device" in a note's history read it from the first row, and a
+    // member syncs several workspaces at once. The server keys what it records
+    // by (client, workspace), so sharing the id costs nothing there.
+    final any = await (db.select(db.syncStates)..limit(1)).getSingleOrNull();
     final state = SyncStatesCompanion.insert(
       workspaceId: workspaceId,
-      clientId: newUlid(),
+      clientId: any?.clientId ?? newUlid(),
     );
     await db.into(db.syncStates).insertOnConflictUpdate(state);
     return (db.select(

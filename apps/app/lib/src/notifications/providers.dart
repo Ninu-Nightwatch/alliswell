@@ -10,7 +10,6 @@ import '../features/devices/data/device_api.dart';
 import '../features/devices/providers.dart';
 import '../features/tasks/providers.dart';
 import '../i18n/i18n.dart';
-import '../features/workspaces/workspaces.dart';
 import '../router.dart';
 import '../sync/db/database.dart';
 import '../sync/providers.dart';
@@ -209,7 +208,7 @@ final alarmLogRowsProvider = StreamProvider<List<AlarmEvent>>(
 final reminderStoreProvider = Provider<ReminderStore>(
   (ref) => ReminderStore(
     ref.watch(databaseProvider),
-    () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+    () => pokeSync(ref),
   ),
 );
 
@@ -258,20 +257,25 @@ final alarmSupportProvider = FutureProvider.autoDispose<AlarmSupport>((
   }
 });
 
-/// One scheduler per signed-in workspace: keeps the OS schedule equal to the
+/// One scheduler per signed-in person: keeps the OS schedule equal to the
 /// replica (OPH-061) and routes notification taps/actions into the stores
 /// (OPH-062/063). Rebuilt when the privacy setting flips (OPH-064) so
 /// content re-renders under the new policy.
 final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
-  final workspace = ref.watch(currentWorkspaceProvider).value;
-  if (workspace == null) return null;
+  // The person's own work — the same scope Home shows. In an organisation's
+  // workspaces that is not "every task of the selected unit": a colleague's
+  // reminder rang on every member's phone that happened to have that unit open.
+  // `select`: a reload of the workspace list passes through loading, and a
+  // scheduler rebuilt for it would re-plan the whole OS schedule for nothing.
+  final scope = ref.watch(taskScopeProvider.select((s) => s.value));
+  if (scope == null) return null;
   final gateway = ref.watch(notificationsGatewayProvider);
   final alarmKit = ref.watch(alarmKitHostProvider);
 
   final scheduler = NotificationScheduler(
     gateway: gateway,
     alarmKit: alarmKit,
-    alarms: ref.watch(reminderStoreProvider).watchAlarms(workspace.id),
+    alarms: ref.watch(reminderStoreProvider).watchAlarmsIn(scope),
     privacyMode: ref.watch(notificationPrivacyProvider),
     log: ref.watch(alarmLogProvider),
     profile: ref.watch(reminderProfileProvider),

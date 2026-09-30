@@ -195,12 +195,12 @@ class _OverviewTab extends ConsumerWidget {
   final Project project;
 
   Future<void> _createReadme(BuildContext context, WidgetRef ref) async {
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty) return;
-    final noteId = await ref.read(noteStoreProvider).create(
-      workspaces.first.id,
-      {'title': project.name, 'projectId': project.id},
-    );
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) return;
+    final noteId = await ref.read(noteStoreProvider).create(workspaceId, {
+      'title': project.name,
+      'projectId': project.id,
+    });
     await ref.read(projectStoreProvider).update(project.id, {
       'readmeNoteId': noteId,
     });
@@ -387,9 +387,9 @@ class _ProjectTasksTab extends ConsumerWidget {
   final String projectId;
 
   Future<void> _add(WidgetRef ref, String title) async {
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty) throw StateError('No workspace available');
-    await ref.read(taskStoreProvider).create(workspaces.first.id, {
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) throw StateError('No workspace available');
+    await ref.read(taskStoreProvider).create(workspaceId, {
       'title': title,
       'projectId': projectId,
     });
@@ -452,8 +452,11 @@ class _ProjectTasksTab extends ConsumerWidget {
                 padding: awListPadding(context),
                 itemCount: items.length,
                 // Every row here is this project — the badge would be noise.
-                itemBuilder: (context, index) =>
-                    TaskTile(task: items[index], showProjectBadge: false),
+                itemBuilder: (context, index) => TaskTile(
+                  task: items[index],
+                  showProjectBadge: false,
+                  showUnit: false,
+                ),
               );
             },
           ),
@@ -471,12 +474,12 @@ class _ProjectNotesTab extends ConsumerWidget {
   final Project project;
 
   Future<void> _addNote(BuildContext context, WidgetRef ref) async {
-    final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty) return;
-    final noteId = await ref.read(noteStoreProvider).create(
-      workspaces.first.id,
-      {'title': 'Untitled', 'projectId': project.id},
-    );
+    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+    if (workspaceId == null) return;
+    final noteId = await ref.read(noteStoreProvider).create(workspaceId, {
+      'title': 'Untitled',
+      'projectId': project.id,
+    });
     if (context.mounted) {
       context.go('/notes/$noteId');
     }

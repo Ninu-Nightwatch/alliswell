@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/kv/local_kv.dart';
 import '../features/auth/providers.dart';
 import '../features/workspaces/workspaces.dart';
 import 'db/connection.dart';
@@ -34,8 +36,6 @@ final syncDebounceProvider = Provider<Duration>(
   (_) => const Duration(milliseconds: 250),
 );
 
-/// One engine per signed-in workspace; null while signed out. Anything that
-/// watches it keeps background sync alive.
 /// This device's sync client id (OPH-269): the engine stamps it on every push,
 /// so a version row carrying it was written HERE. That is what lets the history
 /// say "This device" instead of showing a ULID nobody can read.
@@ -43,6 +43,10 @@ final syncDebounceProvider = Provider<Duration>(
 /// A STREAM since OPH-309, because a fresh install has no `sync_states` row
 /// until the engine's first round — and the device registry is waiting for
 /// exactly that id. A one-shot read answered `null` and stayed `null`.
+///
+/// One id per DEVICE: an engine creating the row for another workspace reuses
+/// the id an earlier row already holds (`SyncEngine._ensureState`), so the
+/// first row answers for all of them.
 final syncClientIdProvider = StreamProvider<String?>((ref) {
   final db = ref.watch(databaseProvider);
   return db
@@ -51,25 +55,146 @@ final syncClientIdProvider = StreamProvider<String?>((ref) {
       .map((rows) => rows.isEmpty ? null : rows.first.clientId);
 });
 
-final syncEngineProvider = Provider<SyncEngine?>((ref) {
-  final workspace = ref.watch(currentWorkspaceProvider).value;
-  if (workspace == null) return null;
+/// The workspaces this device keeps in sync.
+///
+/// A person on their own: the current workspace, as ever. A member of an
+/// organisation: EVERY one of its workspaces they are in — their Home gathers
+/// their work from all of them, and a list read from a replica that stopped
+/// pulling the moment another unit was selected is a list that silently lies
+/// (a request assigned to somebody reached their device only once they
+/// happened to open that unit).
+final syncWorkspaceIdsProvider = Provider<List<String>>((ref) {
+  final shared = ref.watch(sharedWorkspacesProvider);
+  if (shared.isNotEmpty) return [for (final w in shared) w.id];
+  final current = ref.watch(currentWorkspaceProvider).value?.id;
+  return current == null ? const [] : [current];
+});
+
+/// One engine per synced workspace (and per database). The one on screen
+/// pulls on the usual cadence; the others lean on the socket — every one of
+/// the person's workspaces sends its `sync:changed` to this device — and pull
+/// on a slower fallback. Recreated when the selection moves, which costs one
+/// immediate round.
+final syncEngineForProvider = Provider.autoDispose.family<SyncEngine, String>((
+  ref,
+  workspaceId,
+) {
+  final onScreen =
+      ref.watch(currentWorkspaceProvider.select((w) => w.value?.id)) ==
+      workspaceId;
+  final cadence = ref.watch(syncPullIntervalProvider);
+  final db = ref.watch(databaseProvider);
   final engine = SyncEngine(
-    db: ref.watch(databaseProvider),
+    db: db,
     api: ref.watch(syncApiProvider),
-    workspaceId: workspace.id,
-    pullInterval: ref.watch(syncPullIntervalProvider),
+    workspaceId: workspaceId,
+    pullInterval: cadence == null || onScreen ? cadence : cadence * 5,
     debounce: ref.watch(syncDebounceProvider),
   );
-  ref.onDispose(engine.dispose);
-  unawaited(engine.start());
+  // Read, not watched: what it decides happens once, before the first round,
+  // and a rename of the workspace must not rebuild its engine.
+  final repull = ref
+      .read(sharedWorkspacesProvider)
+      .any((w) => w.id == workspaceId && w.reportsOwnership);
+  var disposed = false;
+  ref.onDispose(() {
+    disposed = true;
+    engine.dispose();
+  });
+  unawaited(() async {
+    if (repull) await repullOnceForCreatedBy(db, workspaceId);
+    // `start` re-arms a stopped engine, so it must not run after disposal.
+    if (!disposed) await engine.start();
+  }());
   return engine;
 });
 
-/// Server-refused or LWW-trimmed local writes, surfaced app-wide (OPH-056).
+/// Where [repullOnceForCreatedBy] marks a workspace as done.
+const kCreatedByRepullPrefix = 'alliswell_created_by_repull::';
+
+/// EE-296 — pull one of an organisation's workspaces once more, from its
+/// beginning.
+///
+/// Rows pulled before the replica had `tasks.created_by` (v37) carry none,
+/// and the "made by me" half of a member's Home reads it: without this, a task
+/// they made and nobody took would drop off their Home the day they upgraded.
+/// Once per workspace — the marker lives with the device's other small
+/// facts — and the caller asks only for a workspace whose server sends the
+/// field ([WorkspaceSummary.reportsOwnership]): against an older one the
+/// marker would be spent on rows that still lack it.
+///
+/// Resetting the cursor IS the whole mechanism: the next round pages through
+/// everything from revision 0 exactly as a first pull does, and an
+/// interrupted one resumes from wherever its last applied page left it.
+Future<void> repullOnceForCreatedBy(AwDatabase db, String workspaceId) async {
+  final key = '$kCreatedByRepullPrefix$workspaceId';
+  if (await localKv.get(key) != null) return;
+  await (db.update(db.syncStates)
+        ..where((s) => s.workspaceId.equals(workspaceId)))
+      .write(const SyncStatesCompanion(lastRevision: Value(0)));
+  await localKv.set(key, '1');
+}
+
+/// Every running engine, by workspace. Anything that watches it keeps all of
+/// them alive (the shell does, for as long as the app is open).
+///
+/// A workspace that LEAVES the list gets one last round before its engine
+/// goes: when access is really gone the server answers that with the refusal
+/// that drops the replica and parks what was unsent (EE-058) — the same path
+/// every refused pull takes. Offline, or still reachable, it changes nothing.
+final syncEnginesProvider = Provider<Map<String, SyncEngine>>((ref) {
+  ref.listen<List<String>>(syncWorkspaceIdsProvider, (previous, next) {
+    if (previous == null) return;
+    for (final gone in previous.where((id) => !next.contains(id))) {
+      final probe = SyncEngine(
+        db: ref.read(databaseProvider),
+        api: ref.read(syncApiProvider),
+        workspaceId: gone,
+      );
+      unawaited(probe.syncNow().whenComplete(probe.dispose));
+    }
+  });
+  final ids = ref.watch(syncWorkspaceIdsProvider);
+  return {for (final id in ids) id: ref.watch(syncEngineForProvider(id))};
+});
+
+/// The engine of the workspace on screen; null while signed out. What a
+/// screen that just wrote over REST asks to catch up with the result — that
+/// workspace is the one the write went to.
+final syncEngineProvider = Provider<SyncEngine?>((ref) {
+  final workspace = ref.watch(currentWorkspaceProvider).value;
+  if (workspace == null) return null;
+  return ref.watch(syncEngineForProvider(workspace.id));
+});
+
+/// Tells every running engine that the replica changed. Each one drains only
+/// its own workspace's outbox, so the engine whose workspace the write landed
+/// in pushes it and the others find nothing to do. A write goes out even when
+/// its workspace is not the one on screen — a task finished on Home that lives
+/// in another unit.
+void pokeSync(Ref ref) {
+  for (final engine in ref.read(syncEnginesProvider).values) {
+    engine.notifyLocalWrite();
+  }
+}
+
+/// Server-refused or LWW-trimmed local writes, surfaced app-wide (OPH-056) —
+/// from every engine, since a refusal can come back for any synced workspace.
 final syncConflictsProvider = StreamProvider<SyncConflict>((ref) {
-  final engine = ref.watch(syncEngineProvider);
-  return engine?.conflicts ?? const Stream.empty();
+  final engines = ref.watch(syncEnginesProvider).values.toList();
+  if (engines.isEmpty) return const Stream.empty();
+  if (engines.length == 1) return engines.single.conflicts;
+  final merged = StreamController<SyncConflict>();
+  final subscriptions = [
+    for (final engine in engines) engine.conflicts.listen(merged.add),
+  ];
+  ref.onDispose(() {
+    for (final subscription in subscriptions) {
+      subscription.cancel();
+    }
+    merged.close();
+  });
+  return merged.stream;
 });
 
 /// How sockets get built — widget tests override with `null` (no sockets, no
@@ -80,20 +205,22 @@ final syncSocketFactoryProvider = Provider<SyncSocketFactory?>(
 
 /// The live `sync:changed` listener (OPH-057): one socket per signed-in
 /// session, rebuilt when the session (and thus the access token) rotates.
-/// A matching event pulls immediately; the engine's periodic pull stays as
-/// the fallback for missed sockets.
+/// An event pulls the engine of the workspace it names at once; each engine's
+/// periodic pull stays as the fallback for missed sockets.
 final syncSocketProvider = Provider<SyncSocketHandle?>((ref) {
   final factory = ref.watch(syncSocketFactoryProvider);
-  final engine = ref.watch(syncEngineProvider);
+  final syncing = ref.watch(syncEnginesProvider.select((e) => e.isNotEmpty));
   final session = ref.watch(authControllerProvider).value;
-  if (factory == null || engine == null || session == null) return null;
+  if (factory == null || !syncing || session == null) return null;
 
   final handle = factory(
     baseUrl: ref.watch(apiClientProvider).options.baseUrl,
     token: session.tokens.accessToken,
     onSyncChanged: (payload) {
-      if (syncChangedMatches(payload, engine.workspaceId)) {
-        unawaited(engine.syncNow());
+      for (final engine in ref.read(syncEnginesProvider).values) {
+        if (syncChangedMatches(payload, engine.workspaceId)) {
+          unawaited(engine.syncNow());
+        }
       }
     },
   );

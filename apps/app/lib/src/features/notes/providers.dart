@@ -18,7 +18,7 @@ export 'data/note_store.dart'
 final noteStoreProvider = Provider<NoteStore>(
   (ref) => NoteStore(
     ref.watch(databaseProvider),
-    () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+    () => pokeSync(ref),
   ),
 );
 
@@ -70,15 +70,15 @@ final notesQueryProvider = NotifierProvider<NotesQueryController, NotesQuery>(
 /// canonical ranking).
 final notesListProvider = StreamProvider<List<NoteRow>>((ref) async* {
   ref.watch(syncEngineProvider);
-  final workspaces = await ref.watch(workspacesProvider.future);
-  if (workspaces.isEmpty) {
+  final workspaceId = await ref.watch(activeWorkspaceIdProvider.future);
+  if (workspaceId == null) {
     yield const [];
     return;
   }
   final query = ref
       .watch(notesQueryProvider)
       .copyWith(sort: ref.watch(notesSortStateProvider));
-  yield* ref.watch(noteStoreProvider).watchList(workspaces.first.id, query);
+  yield* ref.watch(noteStoreProvider).watchList(workspaceId, query);
 });
 
 /// The persisted notes order, parsed (OPH-258). Kept out of `NotesQueryController`
@@ -101,14 +101,14 @@ final projectNotesProvider = StreamProvider.family<List<NoteRow>, String>((
   projectId,
 ) async* {
   ref.watch(syncEngineProvider);
-  final workspaces = await ref.watch(workspacesProvider.future);
-  if (workspaces.isEmpty) {
+  final workspaceId = await ref.watch(activeWorkspaceIdProvider.future);
+  if (workspaceId == null) {
     yield const [];
     return;
   }
   yield* ref
       .watch(noteStoreProvider)
-      .watchForProject(workspaces.first.id, projectId);
+      .watchForProject(workspaceId, projectId);
 });
 
 /// Full note for the editor — live, so pulled edits show up in place.

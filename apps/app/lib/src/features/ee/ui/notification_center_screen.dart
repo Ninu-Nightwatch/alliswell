@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
+import '../../../sync/providers.dart';
 import '../../../widgets/status_views.dart';
 import '../notifications_providers.dart';
 import 'notification_prefs_screen.dart';
@@ -38,7 +39,7 @@ class EeNotificationCenterScreen extends ConsumerWidget {
               onPressed: () async {
                 final count = await ref
                     .read(notificationStoreProvider)
-                    .markAllRead();
+                    .markAllRead(ref.read(syncWorkspaceIdsProvider));
                 if (!context.mounted || count == 0) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

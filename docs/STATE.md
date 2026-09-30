@@ -19,7 +19,7 @@ TASKS'a iş yazılmadan, id'ler yalnız commit/CHANGELOG/DEVICE-CHECKS'te.
 | Current phase            | **v1.14.0 canlıda** (2026-09-28, `55efb0b` + uzantı `0c1e35f`) — sunucudaki runner'dan ilk deploy (ADR-0043). Uzantının sunumu bugün; sıra uzantı deposunun `docs/DEMO.md` §A.3'ünde. |
 | Current epic             | Açık epic yok.                                                                               |
 | ➡️ **Next task**         | **BACKLOG BOŞ** — kod kuyruğu boş: TASKS'taki iki iş (OPH-142, OPH-274) ⏸️ sahibin adımını bekliyor; sıradaki adım sahibin (aşağıda). Uzantının işaretçisi kendi deposunda. |
-| Last completed           | OPH-353 — her liste satırları arasında aynı 6 px'i tutuyor (`kAwListRowPadding`); yapışık ve çizgili listeler kart satırında (sahibin raporu, 2026-09-30). |
+| Last completed           | ADR-0044 — paylaşılan alanlar birlikte senkronda, kişinin listeleri kendi işi (`owned`, `createdBy`, görev kapsamı, replika v37) ve üç dikiş eki (içeriden ret, silmenin anlatılması, hatırlatıcı kitlesi); OPH-353 liste ritmi (2026-09-30). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

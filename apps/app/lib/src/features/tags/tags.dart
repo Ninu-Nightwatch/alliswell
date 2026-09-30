@@ -3,6 +3,7 @@ import 'dart:ui' show Color;
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../sync/db/database.dart';
 import '../../sync/providers.dart';
 import '../workspaces/workspaces.dart';
 import 'data/tag_store.dart';
@@ -36,16 +37,48 @@ class Tag {
 }
 
 /// Tags by id — list rows resolve their chips from this (OPH-165, T4).
+///
+/// Every synced workspace's tags, not only the selected one's: in an
+/// organisation a row on Home may come from any unit the person is in, and
+/// its chips must resolve there too (EE-296). On one's own it is the one
+/// workspace, as before.
 final tagsByIdProvider = Provider<Map<String, Tag>>((ref) {
-  final tags = ref.watch(tagsProvider).value ?? const <Tag>[];
+  final tags = ref.watch(listedTagsProvider).value ?? const <Tag>[];
   return {for (final tag in tags) tag.id: tag};
 });
+
+/// The tags behind [tagsByIdProvider].
+final listedTagsProvider = StreamProvider<List<Tag>>((ref) {
+  final workspaceIds = ref.watch(syncWorkspaceIdsProvider);
+  if (workspaceIds.isEmpty) return Stream.value(const <Tag>[]);
+  return _watchTags(ref.watch(databaseProvider), workspaceIds);
+});
+
+/// The tags of ONE workspace — what a task's own tag field offers and
+/// creates in: a task opened from Home may live in a unit other than the one
+/// selected, and a tag from another workspace cannot be put on it.
+final workspaceTagsProvider = StreamProvider.family<List<Tag>, String>(
+  (ref, workspaceId) =>
+      _watchTags(ref.watch(databaseProvider), [workspaceId]),
+);
+
+Stream<List<Tag>> _watchTags(AwDatabase db, List<String> workspaceIds) =>
+    (db.select(db.tags)
+          ..where((t) => t.workspaceId.isIn(workspaceIds))
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .watch()
+        .map(
+          (rows) => [
+            for (final r in rows)
+              Tag(id: r.id, name: r.name, slug: r.slug, colorRgb: r.colorRgb),
+          ],
+        );
 
 /// Local-first tag writes (create/rename/recolor/delete) — OPH-165.
 final tagStoreProvider = Provider<TagStore>(
   (ref) => TagStore(
     ref.watch(databaseProvider),
-    onMutation: () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+    onMutation: () => pokeSync(ref),
   ),
 );
 
@@ -53,22 +86,12 @@ final tagStoreProvider = Provider<TagStore>(
 /// replica (OPH-054).
 final tagsProvider = StreamProvider<List<Tag>>((ref) async* {
   ref.watch(syncEngineProvider);
-  final workspaces = await ref.watch(workspacesProvider.future);
-  if (workspaces.isEmpty) {
+  final workspaceId = await ref.watch(activeWorkspaceIdProvider.future);
+  if (workspaceId == null) {
     yield const [];
     return;
   }
-  final db = ref.watch(databaseProvider);
-  yield* (db.select(db.tags)
-        ..where((t) => t.workspaceId.equals(workspaces.first.id))
-        ..orderBy([(t) => OrderingTerm.asc(t.name)]))
-      .watch()
-      .map(
-        (rows) => [
-          for (final r in rows)
-            Tag(id: r.id, name: r.name, slug: r.slug, colorRgb: r.colorRgb),
-        ],
-      );
+  yield* _watchTags(ref.watch(databaseProvider), [workspaceId]);
 });
 
 /// Which tag Home is filtered by, or null (OPH-306).

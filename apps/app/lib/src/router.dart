@@ -31,7 +31,6 @@ import 'features/settings/reminder_settings_screen.dart';
 import 'features/ai/ui/ai_settings_screen.dart';
 import 'features/ee/ui/team_roles_screen.dart';
 import 'features/ee/ui/task_history_screen.dart';
-import 'features/ee/ui/assigned_to_me_screen.dart';
 import 'features/ee/ui/notification_center_screen.dart';
 import 'features/ee/ui/notification_prefs_screen.dart';
 import 'features/ee/ui/shared_with_me_screen.dart';
@@ -797,12 +796,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings/team/notifications',
         builder: (context, state) => _page(const EeNotificationPrefsScreen()),
       ),
-      // EE-068: "assigned to me". Not an admin route and not a settings
-      // screen in spirit — it is a work list — but it lives under the team
-      // path because it only exists where there is a team to be assigned by.
+      // EE-068's "assigned to me" list, retired by EE-296: in an
+      // organisation Home IS the person's work — everything assigned to them,
+      // from every unit — so a second list of the same work would be the
+      // thing to explain. The address stays, for links and habits, and lands
+      // where that work now is.
       GoRoute(
         path: '/settings/team/assignments',
-        builder: (context, state) => _page(const EeAssignedToMeScreen()),
+        redirect: (context, state) => '/',
       ),
       // EE-087: "my requests". Reachable by anyone in a team — asking for
       // something is the least privileged act in the product.

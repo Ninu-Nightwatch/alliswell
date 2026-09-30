@@ -188,7 +188,14 @@ void main() {
     late AwDatabase db;
     late _RecordingSyncApi api;
 
-    ProviderContainer containerFor({required String current}) {
+    /// [inUnit]: the person also works in one of the organisation's units.
+    /// Without one they are a requester only, and their own workspace is the
+    /// one on screen — with one, it never is (EE-296: an organisation's app
+    /// has no personal space; the own workspace only carries drafts).
+    ProviderContainer containerFor({
+      required String current,
+      bool inUnit = true,
+    }) {
       final container = ProviderContainer(
         overrides: [
           databaseProvider.overrideWithValue(db),
@@ -196,21 +203,22 @@ void main() {
           syncPullIntervalProvider.overrideWithValue(null),
           syncDebounceProvider.overrideWithValue(Duration.zero),
           workspacesProvider.overrideWith(
-            (ref) async => const [
-              WorkspaceSummary(
+            (ref) async => [
+              const WorkspaceSummary(
                 id: 'W-OWN',
                 name: 'Barış',
                 slug: 'baris',
                 colorRgb: '#2563EB',
                 role: 'owner',
               ),
-              WorkspaceSummary(
-                id: 'W-UNIT',
-                name: 'Bakım',
-                slug: 'bakim',
-                colorRgb: '#2563EB',
-                role: 'member',
-              ),
+              if (inUnit)
+                const WorkspaceSummary(
+                  id: 'W-UNIT',
+                  name: 'Bakım',
+                  slug: 'bakim',
+                  colorRgb: '#2563EB',
+                  role: 'member',
+                ),
             ],
           ),
           selectedWorkspaceIdProvider.overrideWith(() => _Selected(current)),
@@ -273,7 +281,8 @@ void main() {
     test(
       'on its own space the ordinary engine carries it — no second engine',
       () async {
-        final container = containerFor(current: 'W-OWN');
+        // A requester with no unit: their own workspace is the one on screen.
+        final container = containerFor(current: 'W-OWN', inUnit: false);
         final sub = container.listen(draftCourierProvider, (_, _) {});
         addTearDown(sub.close);
         await container.read(workspacesProvider.future);

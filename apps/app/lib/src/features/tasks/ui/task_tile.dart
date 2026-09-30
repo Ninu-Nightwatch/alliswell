@@ -8,10 +8,13 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/swipe_actions.dart';
 import '../../ai/data/ai_quick_add.dart';
 import '../../ee/assignments_providers.dart';
+import '../../ee/ticket_work_providers.dart';
 import '../../ee/ui/assignee_avatars.dart';
+import '../../ee/ui/ticket_work_section.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_badge.dart';
 import '../../tags/tags.dart';
+import '../../workspaces/workspaces.dart';
 import '../data/task.dart';
 import '../providers.dart';
 import 'repeat_row.dart';
@@ -35,6 +38,7 @@ class TaskTile extends ConsumerWidget {
     this.dimmed = false,
     this.highlighted = false,
     this.showProjectBadge = true,
+    this.showUnit = true,
     this.swipeToDelete = true,
     this.trailingAction,
     this.onTagTap,
@@ -47,6 +51,11 @@ class TaskTile extends ConsumerWidget {
   /// Whether to show the project badge at the row's far right (OPH-104).
   /// Off inside a project's own Tasks tab, where every row is that project.
   final bool showProjectBadge;
+
+  /// Whether to name the unit the task lives in, when the person works in
+  /// several (EE-296, [unitLabelsProvider]). Off inside a project, which
+  /// lives in one.
+  final bool showUnit;
 
   /// OPH-184: the swipe-to-delete affordance. Off on the board, whose
   /// horizontal pager owns the horizontal gesture (DESIGN §19 D6).
@@ -115,6 +124,15 @@ class TaskTile extends ConsumerWidget {
     final project = (showProjectBadge && task.projectId != null)
         ? ref.watch(projectsByIdProvider)[task.projectId]
         : null;
+    // EE-297: the request this task is the work of, when it is one.
+    final work = ref.watch(
+      workTicketsByTaskProvider.select((value) => value.value?[task.id]),
+    );
+    // EE-296: Home gathers a member's work from every unit they are in, so a
+    // row says which one — the same fact the switcher names for the screen.
+    final unit = showUnit
+        ? ref.watch(unitLabelsProvider.select((m) => m[task.workspaceId]))
+        : null;
     // OPH-165 (DESIGN T4): at most 2 inline tags + "+N" — typographic, so the
     // row never grows past its card rhythm.
     final tagsById = task.tagIds.isEmpty
@@ -179,13 +197,39 @@ class TaskTile extends ConsumerWidget {
                 !snoozed &&
                 !muted &&
                 !recurring &&
-                assignees.isEmpty)
+                assignees.isEmpty &&
+                unit == null &&
+                work == null)
             ? null
             : Wrap(
                 spacing: AwSpace.x2,
                 runSpacing: 2,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  if (work != null) AwTicketWorkChip(work: work),
+                  if (unit != null)
+                    Row(
+                      key: Key('task-unit-${task.id}'),
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.workspaces_outline,
+                          size: 14,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 160),
+                          child: Text(
+                            unit,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   if (recurring)
                     Tooltip(
                       message: 'repeat.badgeTooltip'.tr(),
@@ -374,7 +418,9 @@ class TaskTile extends ConsumerWidget {
 
     // OPH-184: the row's own delete affordance. `AwSwipeToDelete` also hides
     // the row while its delete is undoable, so every list agrees at once.
-    final swipeable = swipeToDelete
+    // EE-297: a request's work is not deleted — it is given back on the
+    // request (the task detail's "Request" card); the server refuses it too.
+    final swipeable = swipeToDelete && work == null
         ? AwSwipeToDelete(
             id: task.id,
             semanticLabel: 'task.deleteSemantic'.tr(

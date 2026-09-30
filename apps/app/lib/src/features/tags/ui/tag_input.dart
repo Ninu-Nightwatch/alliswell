@@ -25,6 +25,7 @@ class TagInputField extends ConsumerStatefulWidget {
     required this.value,
     required this.onChanged,
     this.onManage,
+    this.workspaceId,
   });
 
   /// Selected tag ids, order preserved.
@@ -33,6 +34,11 @@ class TagInputField extends ConsumerStatefulWidget {
 
   /// When set, a small "manage tags" affordance renders next to the input.
   final VoidCallback? onManage;
+
+  /// Whose tags: the TASK's workspace when the field edits an existing task
+  /// (EE-296 — one opened from Home may live in a unit other than the one
+  /// selected), or null for the workspace on screen, where a new task lands.
+  final String? workspaceId;
 
   @override
   ConsumerState<TagInputField> createState() => _TagInputFieldState();
@@ -80,9 +86,11 @@ class _TagInputFieldState extends ConsumerState<TagInputField> {
       if (existing != null) {
         id = existing.id;
       } else {
-        final workspaces = await ref.read(workspacesProvider.future);
-        if (workspaces.isEmpty) return;
-        id = await ref.read(tagStoreProvider).create(workspaces.first.id, text);
+        final workspaceId =
+            widget.workspaceId ??
+            await ref.read(activeWorkspaceIdProvider.future);
+        if (workspaceId == null) return;
+        id = await ref.read(tagStoreProvider).create(workspaceId, text);
       }
       if (!widget.value.contains(id)) {
         widget.onChanged([...widget.value, id]);
@@ -115,7 +123,12 @@ class _TagInputFieldState extends ConsumerState<TagInputField> {
 
   @override
   Widget build(BuildContext context) {
-    final tags = ref.watch(tagsProvider).value ?? const <Tag>[];
+    final own = widget.workspaceId;
+    final tags =
+        ref
+            .watch(own == null ? tagsProvider : workspaceTagsProvider(own))
+            .value ??
+        const <Tag>[];
     final byId = {for (final tag in tags) tag.id: tag};
     final selected = [
       for (final id in widget.value)
