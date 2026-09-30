@@ -19,6 +19,12 @@ This file holds the unreleased changes and the latest release; at each release t
   for which service and desk, and the first lines of what they wrote. The old
   `/settings/team/approvals` address still opens it. One count badge for the whole app
   (`AwCountBadge`); DESIGN §23 Q10 and §32 S7 amended.
+- **An approval opens onto the whole request (EE-295).** Every row, and the approval's
+  notification, opens one page with what a decision needs: who asked and when, the
+  description, the form's answers, every file and the conversation — internal notes included
+  and marked — and who else signs. Before deciding, the approver can correct the subject, the
+  description or the answers; the correction lands in the request's history under their name.
+  Somebody who was not asked reads a summary only.
 
 ### Fixed
 

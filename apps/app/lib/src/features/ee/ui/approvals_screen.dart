@@ -11,7 +11,7 @@ import '../approvals_providers.dart';
 import '../data/approvals_models.dart';
 import 'approval_card.dart';
 import 'approval_reason_dialog.dart';
-import 'change_detail_screen.dart';
+import 'approval_detail_screen.dart';
 
 /// EE-184 / EE-294 — what is waiting on this person's decision.
 ///
@@ -304,14 +304,12 @@ class _OthersGroupState extends ConsumerState<_OthersGroup> {
   }
 }
 
-/// Where a row goes when tapped. EE-269: a change has a detail the board
-/// reads before signing it.
-VoidCallback? _opener(BuildContext context, EeApproval approval) {
-  if (approval.targetType == 'ee_change' && approval.target != null) {
-    return () => awOpenChange(context, approval.targetId);
-  }
-  return null;
-}
+/// Where a row goes when tapped — EVERY row, since EE-295: the approval's own
+/// page, which reads the request whole for the approver and opens the
+/// request, the change or the task from there. Until then only a change's
+/// row opened (EE-269), and a request's row was a line with nowhere to go.
+VoidCallback? _opener(BuildContext context, EeApproval approval) =>
+    () => awOpenApproval(context, approval.id);
 
 Future<void> _askForReason(
   BuildContext context,

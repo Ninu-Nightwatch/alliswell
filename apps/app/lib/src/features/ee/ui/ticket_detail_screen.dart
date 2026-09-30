@@ -827,11 +827,16 @@ class EeTicketAnswersView extends StatelessWidget {
   const EeTicketAnswersView({
     required this.answers,
     required this.dateFormat,
+    this.titled = true,
     super.key,
   });
 
   final List<EeTicketAnswer> answers;
   final String dateFormat;
+
+  /// False under a screen's own section heading (EE-295's approval window),
+  /// so the words are not said twice.
+  final bool titled;
 
   String _shown(EeTicketAnswer answer) => switch (answer.type) {
     'checkbox' => (answer.value == 'true' ? 'common.yes' : 'common.no').tr(),
@@ -847,17 +852,18 @@ class EeTicketAnswersView extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       key: const Key('ticket-answers'),
-      padding: const EdgeInsets.only(top: AwSpace.x4),
+      padding: EdgeInsets.only(top: titled ? AwSpace.x4 : 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'ee.tickets.answers.title'.tr(),
-            style: theme.textTheme.titleSmall,
-          ),
-          for (final answer in answers)
+          if (titled)
+            Text(
+              'ee.tickets.answers.title'.tr(),
+              style: theme.textTheme.titleSmall,
+            ),
+          for (final (i, answer) in answers.indexed)
             Padding(
-              padding: const EdgeInsets.only(top: AwSpace.x2),
+              padding: EdgeInsets.only(top: titled || i > 0 ? AwSpace.x2 : 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

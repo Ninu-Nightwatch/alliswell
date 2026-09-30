@@ -54,6 +54,7 @@ import 'features/ee/ui/team_services_screen.dart';
 import 'features/ee/ui/portal_links_screen.dart';
 import 'features/ee/ui/meeting_screen.dart';
 import 'features/ee/ui/team_ai_keys_screen.dart';
+import 'features/ee/ui/approval_detail_screen.dart';
 import 'features/ee/ui/approvals_screen.dart';
 import 'features/ee/ui/team_webhooks_screen.dart';
 import 'features/ee/ui/team_identity_screen.dart';
@@ -732,6 +733,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/approvals',
         builder: (context, state) => _page(const EeApprovalsScreen()),
+      ),
+      // EE-295: one approval, whole — what a row of the queue and an
+      // approval notification open (the approver's window, ADR-0018).
+      GoRoute(
+        path: '/approvals/:approvalId',
+        builder: (context, state) => _page(
+          EeApprovalDetailScreen(
+            approvalId: state.pathParameters['approvalId'] ?? '',
+          ),
+        ),
       ),
       GoRoute(
         path: '/settings/team/approvals',

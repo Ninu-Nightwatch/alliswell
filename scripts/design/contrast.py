@@ -325,6 +325,19 @@ PAIRS = [
     ('D banner ink on tertiary container', '#BDF6EC', '#0E5B4F', 4.5),
     ('L banner action label', '#084F44', '#BFF2E6', 4.5),
     ('D banner action label', '#BDF6EC', '#0E5B4F', 4.5),
+    # EE-295 — the approver's window. Every pair passes under another name
+    # already; they are listed by NAME for §7.1's reason (a surface nobody
+    # listed is the blind spot). The internal note is the tertiary container,
+    # a reply and the facts' pills the highest container, the "your decision
+    # is awaited" strip the secondary container.
+    ('L approval internal note ink', '#084F44', '#BFF2E6', 4.5),
+    ('D approval internal note ink', '#BDF6EC', '#0E5B4F', 4.5),
+    ('L approval reply body', '#0F1B2E', '#DEE8F8', 4.5),
+    ('D approval reply body', '#EAF0FD', '#26345E', 4.5),
+    ('L approval reply meta / pill', '#44536F', '#DEE8F8', 4.5),
+    ('D approval reply meta / pill', '#AAB6D6', '#26345E', 4.5),
+    ('L approval status strip', '#3A32A8', '#E4E1FF', 4.5),
+    ('D approval status strip', '#E6E1FF', '#3B3583', 4.5),
 ]
 
 

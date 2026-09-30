@@ -60,6 +60,53 @@ class EeApprovalsApi {
     }
   }
 
+  /// The approver's window onto one approval (EE-295): the row, every
+  /// signature on the same thing, what this person may do, and — when they
+  /// may read it — the request whole. Failures travel intact: a 404 here is
+  /// "this approval is gone", a fact the screen says.
+  Future<EeApprovalDetail> detail(String id) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('$_base/$id');
+      return EeApprovalDetail.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
+
+  /// A short-lived download address for one of the request's files — minted
+  /// per ask and never stored (the ticket's own file doors' rule). Null when
+  /// the server keeps no object storage.
+  Future<Uri?> fileDownload(String id, String fileId) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '$_base/$id/files/$fileId',
+      );
+      final url = res.data?['downloadUrl'] as String?;
+      return url == null ? null : Uri.tryParse(url);
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
+
+  /// The correction (EE-293 on the server): only what changed is sent, and
+  /// the answer is the new window.
+  Future<EeApprovalDetail> correct(
+    String id, {
+    String? subject,
+    String? body,
+    Map<String, Object?>? answers,
+  }) async {
+    try {
+      final res = await _dio.patch<Map<String, dynamic>>(
+        '$_base/$id/request',
+        data: {'subject': ?subject, 'body': ?body, 'answers': ?answers},
+      );
+      return EeApprovalDetail.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
+
   Future<EeApproval> decide(
     String id, {
     required bool approve,

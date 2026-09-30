@@ -194,3 +194,56 @@ final eeApprovalsOthersProvider = FutureProvider.autoDispose<List<EeApproval>>((
       .where((a) => a.addressedTo == 'other' && a.isPending && a.live)
       .toList(growable: false);
 });
+
+// ── One approval, whole (EE-295) ────────────────────────────────────────────
+
+/// The approver's window onto one approval. Asked every time the screen
+/// opens and after anything this person does to it; never with no signal —
+/// a copy of somebody's request from before would be old words passing for
+/// what they say now.
+final eeApprovalDetailProvider = FutureProvider.autoDispose
+    .family<EeApprovalDetail, String>((ref, id) async {
+      if (ref.watch(serverReachabilityProvider.select((up) => up == false))) {
+        throw const ApiException('NETWORK_ERROR', 'No connection');
+      }
+      return ref.watch(eeApprovalsApiProvider).detail(id);
+    });
+
+final eeApprovalActionsProvider = Provider<EeApprovalActions>(
+  EeApprovalActions.new,
+);
+
+/// What the approver does from the window: correct the request, or answer.
+/// Each re-reads what it moved — the window, the queue, the badge.
+class EeApprovalActions {
+  EeApprovalActions(this._ref);
+  final Ref _ref;
+
+  Future<EeApprovalDetail> correct(
+    String id, {
+    String? subject,
+    String? body,
+    Map<String, Object?>? answers,
+  }) async {
+    final detail = await _ref
+        .read(eeApprovalsApiProvider)
+        .correct(id, subject: subject, body: body, answers: answers);
+    _ref.invalidate(eeApprovalDetailProvider(id));
+    _ref.invalidate(eeApprovalsProvider);
+    return detail;
+  }
+
+  Future<void> decide(
+    String id, {
+    required bool approve,
+    required String reason,
+  }) async {
+    await _ref
+        .read(eeApprovalsApiProvider)
+        .decide(id, approve: approve, reason: reason);
+    _ref.invalidate(eeApprovalDetailProvider(id));
+    _ref.invalidate(eeApprovalsProvider);
+    _ref.invalidate(eeApprovalsOthersProvider);
+    _ref.invalidate(eeApprovalsSummaryProvider);
+  }
+}

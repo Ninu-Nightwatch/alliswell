@@ -633,7 +633,10 @@
     "APPROVAL_NOT_YOURS": "Bu onay sizden istenmedi.",
     "APPROVAL_ALREADY_DECIDED": "Bu onay zaten karara bağlandı — ekran güncel olmayabilir.",
     "APPROVAL_REASON_REQUIRED": "Gerekçeyi yazın — iki cevap da bir gerekçe ister.",
-    "SERVICE_APPROVER_CANNOT_DECIDE": "Bu rolü taşıyanlar onay veremiyor — role onay verme yetkisi verin ya da başka bir rol seçin."
+    "SERVICE_APPROVER_CANNOT_DECIDE": "Bu rolü taşıyanlar onay veremiyor — role onay verme yetkisi verin ya da başka bir rol seçin.",
+    "APPROVAL_TARGET_NOT_EDITABLE": "Burada yalnız bir talep düzeltilebilir.",
+    "TICKET_FIELD_REQUIRED": "Zorunlu bir soru cevapsız kaldı.",
+    "TICKET_NO_FORM": "Bu talep bir formla açılmadı; düzeltilecek cevabı yok."
   },
   "sync": {
     "noteConflict": "Bu not başka bir cihazda da düzenlendi — karşılaştırmak için aç.",
@@ -2754,7 +2757,40 @@
       "othersGroup": "Takımda başkasını bekleyenler",
       "othersEmpty": "Takımda başkasını bekleyen bir onay yok",
       "approvedToast": "Onaylandı",
-      "rejectedToast": "Reddedildi"
+      "rejectedToast": "Reddedildi",
+      "detailTitle": "Onay",
+      "bannerYours": "Kararınız bekleniyor",
+      "openedAt": "{when} açıldı",
+      "noDescription": "Açıklama yazılmamış.",
+      "internal": "İç not",
+      "fileUnavailable": "Bu dosya şu anda buradan indirilemiyor.",
+      "summaryOnly": "Bu onay sizden istenmedi; yalnız özeti görünüyor — talebin kendisini onaylayanı okur.",
+      "requesterSide": "Talep eden",
+      "correct": "Talebi düzelt",
+      "correctHint": "Karar vermeden önce yanlış yazılmış olanı düzeltin. Düzeltme talebin geçmişinde adınızla saklanır.",
+      "correctSubject": "Konu",
+      "correctBody": "Açıklama",
+      "corrected": "Düzeltme kaydedildi — talebin geçmişinde adınızla görünür",
+      "subjectRequired": "Konu boş bırakılamaz",
+      "answerRequired": "\"{label}\" sorusunun cevabı gerekli",
+      "goneTitle": "Bu onay artık yok",
+      "goneBody": "Konusu olan talep arşive kaldırılmış ya da onay başka bir takıma ait.",
+      "backToList": "Onaylara dön",
+      "section": {
+        "requester": "Talep eden",
+        "description": "Açıklama",
+        "answers": "Form cevapları",
+        "files": "Ekler",
+        "conversation": "Yazışma",
+        "signatures": "İmzalar",
+        "ask": "Onay isteği",
+        "impact": "Etkisi"
+      },
+      "openTarget": {
+        "ee_ticket": "Talebi aç",
+        "ee_change": "Değişikliği aç",
+        "task": "Görevi aç"
+      }
     },
     "assets": {
       "status": {

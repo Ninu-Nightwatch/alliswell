@@ -209,8 +209,8 @@ void main() {
       },
     );
     final row = (await readCentre(containerWith())).single;
-    // EE-294: the navigation's own screen now, not Settings.
-    expect(row.destination, '/approvals');
+    // EE-295: the approval itself, read whole — not Settings, not the list.
+    expect(row.destination, '/approvals/A1');
     expect(row.titleKey.tr(args: row.args), 'Your approval is needed');
     expect(row.bodyKey!.tr(args: row.args), '#1042 — Dizüstü bilgisayar');
   });

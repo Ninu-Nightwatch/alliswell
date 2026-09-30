@@ -12,6 +12,10 @@
 /// the screen has to say so rather than render an empty row.
 library;
 
+import 'changes_models.dart';
+import 'new_ticket_api.dart';
+import 'ticket_write_api.dart';
+
 DateTime? _date(Object? raw) =>
     raw == null ? null : DateTime.parse(raw as String).toLocal();
 
@@ -286,4 +290,324 @@ class EeApprovalsSummary {
 
   /// What the navigation's badge says.
   int get total => personal + role;
+}
+
+// ── The approver's window (EE-295, the server's EE-293) ─────────────────────
+
+/// What this person may do here, in the door's own words: read the target
+/// whole, correct it, open it where it lives.
+class EeApprovalAccess {
+  const EeApprovalAccess({
+    this.full = false,
+    this.edit = false,
+    this.openTarget = false,
+  });
+
+  factory EeApprovalAccess.fromJson(Map<String, dynamic> json) =>
+      EeApprovalAccess(
+        full: json['full'] == true,
+        edit: json['edit'] == true,
+        openTarget: json['openTarget'] == true,
+      );
+
+  final bool full;
+  final bool edit;
+  final bool openTarget;
+}
+
+class EeApprovalRequester {
+  const EeApprovalRequester({this.userId, this.name, this.email, this.kind});
+
+  factory EeApprovalRequester.fromJson(Map<String, dynamic> json) =>
+      EeApprovalRequester(
+        userId: json['userId'] as String?,
+        name: json['name'] as String?,
+        email: json['email'] as String?,
+        kind: json['kind'] as String?,
+      );
+
+  final String? userId;
+  final String? name;
+  final String? email;
+
+  /// `member` · `portal` · `email` · `named` · `system`.
+  final String? kind;
+}
+
+/// One reply on the request — the desk's internal notes included, marked.
+class EeApprovalComment {
+  const EeApprovalComment({
+    required this.id,
+    required this.body,
+    required this.internal,
+    this.authorId,
+    this.authorName,
+    this.createdAt,
+  });
+
+  factory EeApprovalComment.fromJson(Map<String, dynamic> json) =>
+      EeApprovalComment(
+        id: json['id'] as String,
+        body: json['body'] as String? ?? '',
+        internal: json['internal'] == true,
+        authorId: json['authorId'] as String?,
+        authorName: json['authorName'] as String?,
+        createdAt: _date(json['createdAt']),
+      );
+
+  final String id;
+  final String body;
+  final bool internal;
+  final String? authorId;
+  final String? authorName;
+  final DateTime? createdAt;
+}
+
+/// One file on the request — an internal note's included, marked.
+class EeApprovalFile {
+  const EeApprovalFile({
+    required this.id,
+    required this.name,
+    required this.mime,
+    required this.sizeBytes,
+    required this.internal,
+    this.commentId,
+  });
+
+  factory EeApprovalFile.fromJson(Map<String, dynamic> json) => EeApprovalFile(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    mime: json['mime'] as String? ?? 'application/octet-stream',
+    sizeBytes: (json['sizeBytes'] as num?)?.toInt() ?? 0,
+    internal: json['internal'] == true,
+    commentId: json['commentId'] as String?,
+  );
+
+  final String id;
+  final String name;
+  final String mime;
+  final int sizeBytes;
+  final bool internal;
+  final String? commentId;
+}
+
+/// The request, whole — what the approver decides on (ADR-0018 D18.2).
+class EeApprovalRequestView {
+  const EeApprovalRequestView({
+    required this.id,
+    required this.ref,
+    required this.subject,
+    required this.status,
+    required this.requester,
+    this.number,
+    this.body,
+    this.priority,
+    this.impact,
+    this.urgency,
+    this.processType,
+    this.source,
+    this.createdAt,
+    this.serviceId,
+    this.serviceName,
+    this.fields = const [],
+    this.unitName,
+    this.answers = const [],
+    this.answerValues = const {},
+    this.comments = const [],
+    this.files = const [],
+  });
+
+  factory EeApprovalRequestView.fromJson(Map<String, dynamic> json) {
+    final service = json['service'] as Map<String, dynamic>?;
+    final answers = ((json['answers'] as List?) ?? const [])
+        .cast<Map<String, dynamic>>();
+    return EeApprovalRequestView(
+      id: json['id'] as String,
+      number: json['number'] as int?,
+      ref: json['ref'] as String? ?? '',
+      subject: json['subject'] as String? ?? '',
+      body: json['body'] as String?,
+      status: json['status'] as String? ?? 'new',
+      priority: json['priority'] as String?,
+      impact: json['impact'] as String?,
+      urgency: json['urgency'] as String?,
+      processType: json['processType'] as String?,
+      source: json['source'] as String?,
+      createdAt: _date(json['createdAt']),
+      requester: EeApprovalRequester.fromJson(
+        (json['requester'] as Map<String, dynamic>?) ?? const {},
+      ),
+      serviceId: service?['id'] as String?,
+      serviceName: service?['name'] as String?,
+      fields: ((service?['fields'] as List?) ?? const [])
+          .map((f) => EeFormField.fromJson(f as Map<String, dynamic>))
+          .toList(growable: false),
+      unitName: json['unitName'] as String?,
+      answers: answers.map(EeTicketAnswer.fromJson).toList(growable: false),
+      answerValues: {
+        for (final answer in answers)
+          if (answer['key'] case final String key)
+            key: answer['value'] as String? ?? '',
+      },
+      comments: ((json['comments'] as List?) ?? const [])
+          .map((c) => EeApprovalComment.fromJson(c as Map<String, dynamic>))
+          .toList(growable: false),
+      files: ((json['files'] as List?) ?? const [])
+          .map((f) => EeApprovalFile.fromJson(f as Map<String, dynamic>))
+          .toList(growable: false),
+    );
+  }
+
+  final String id;
+  final int? number;
+
+  /// `#1042` — what a person says out loud.
+  final String ref;
+  final String subject;
+  final String? body;
+  final String status;
+  final String? priority;
+  final String? impact;
+  final String? urgency;
+  final String? processType;
+  final String? source;
+  final DateTime? createdAt;
+  final EeApprovalRequester requester;
+  final String? serviceId;
+  final String? serviceName;
+
+  /// The questions of the form version the request answered — what the
+  /// correction draws, with the same widgets the filing screen uses.
+  final List<EeFormField> fields;
+  final String? unitName;
+  final List<EeTicketAnswer> answers;
+
+  /// `{key: value}` of [answers], to seed the correction.
+  final Map<String, String> answerValues;
+  final List<EeApprovalComment> comments;
+  final List<EeApprovalFile> files;
+}
+
+class EeApprovalChangeView {
+  const EeApprovalChangeView({
+    required this.id,
+    required this.title,
+    required this.status,
+    this.type,
+    this.risk,
+    this.windowStart,
+    this.windowEnd,
+    this.impact,
+    this.createdByName,
+    this.createdAt,
+  });
+
+  factory EeApprovalChangeView.fromJson(Map<String, dynamic> json) =>
+      EeApprovalChangeView(
+        id: json['id'] as String,
+        title: json['title'] as String? ?? '',
+        status: json['status'] as String? ?? '',
+        type: json['type'] as String?,
+        risk: json['risk'] as String?,
+        windowStart: _date(json['windowStart']),
+        windowEnd: _date(json['windowEnd']),
+        impact: json['impact'] as String?,
+        createdByName: json['createdByName'] as String?,
+        createdAt: _date(json['createdAt']),
+      );
+
+  final String id;
+  final String title;
+  final String status;
+  final String? type;
+  final String? risk;
+  final DateTime? windowStart;
+  final DateTime? windowEnd;
+  final String? impact;
+  final String? createdByName;
+  final DateTime? createdAt;
+}
+
+class EeApprovalTaskView {
+  const EeApprovalTaskView({
+    required this.id,
+    required this.title,
+    required this.status,
+    this.priority,
+    this.dueAt,
+    this.description,
+    this.projectName,
+    this.createdByName,
+    this.createdAt,
+  });
+
+  factory EeApprovalTaskView.fromJson(Map<String, dynamic> json) =>
+      EeApprovalTaskView(
+        id: json['id'] as String,
+        title: json['title'] as String? ?? '',
+        status: json['status'] as String? ?? '',
+        priority: json['priority'] as String?,
+        dueAt: _date(json['dueAt']),
+        description: json['description'] as String?,
+        projectName: json['projectName'] as String?,
+        createdByName: json['createdByName'] as String?,
+        createdAt: _date(json['createdAt']),
+      );
+
+  final String id;
+  final String title;
+  final String status;
+  final String? priority;
+  final DateTime? dueAt;
+  final String? description;
+  final String? projectName;
+  final String? createdByName;
+  final DateTime? createdAt;
+}
+
+/// `GET /approvals/:id` — the row, every signature on the same thing, what
+/// this person may do, and (when they may read it) the thing itself.
+class EeApprovalDetail {
+  const EeApprovalDetail({
+    required this.approval,
+    required this.signatures,
+    required this.access,
+    this.request,
+    this.change,
+    this.task,
+  });
+
+  factory EeApprovalDetail.fromJson(Map<String, dynamic> json) =>
+      EeApprovalDetail(
+        approval: EeApproval.fromJson(json['approval'] as Map<String, dynamic>),
+        signatures: ((json['signatures'] as List?) ?? const [])
+            .map((s) => EeChangeApproval.fromJson(s as Map<String, dynamic>))
+            .toList(growable: false),
+        access: EeApprovalAccess.fromJson(
+          (json['access'] as Map<String, dynamic>?) ?? const {},
+        ),
+        request: json['request'] == null
+            ? null
+            : EeApprovalRequestView.fromJson(
+                json['request'] as Map<String, dynamic>,
+              ),
+        change: json['change'] == null
+            ? null
+            : EeApprovalChangeView.fromJson(
+                json['change'] as Map<String, dynamic>,
+              ),
+        task: json['task'] == null
+            ? null
+            : EeApprovalTaskView.fromJson(json['task'] as Map<String, dynamic>),
+      );
+
+  final EeApproval approval;
+
+  /// Every signature asked about the same target, oldest first — the shape a
+  /// change's signature card already reads.
+  final List<EeChangeApproval> signatures;
+  final EeApprovalAccess access;
+  final EeApprovalRequestView? request;
+  final EeApprovalChangeView? change;
+  final EeApprovalTaskView? task;
 }

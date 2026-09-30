@@ -12,6 +12,7 @@ import '../data/changes_models.dart';
 import '../services_providers.dart';
 import '../tickets_providers.dart';
 import 'approval_reason_dialog.dart';
+import 'approval_signature_card.dart';
 import 'change_labels.dart';
 import 'ticket_detail_screen.dart';
 
@@ -289,7 +290,7 @@ class _Signatures extends ConsumerWidget {
           )
         else
           for (final approval in approvals)
-            _SignatureCard(
+            EeSignatureCard(
               approval: approval,
               onDecide: (approve) => _decide(context, ref, approval, approve),
             ),
@@ -332,101 +333,6 @@ class _Signatures extends ConsumerWidget {
         context,
       ).showSnackBar(SnackBar(content: Text(localizedError(error))));
     }
-  }
-}
-
-class _SignatureCard extends StatelessWidget {
-  const _SignatureCard({required this.approval, required this.onDecide});
-
-  final EeChangeApproval approval;
-  final void Function(bool approve) onDecide;
-
-  /// Who is asked: a person or a custom role by name, a built-in role by the
-  /// app's own word for it.
-  String _who() =>
-      approval.approverName ??
-      (approval.approverRoleKey == null
-          ? '—'
-          : AwI18n.instance.maybeTranslate(
-                  'ee.team.role.${approval.approverRoleKey}',
-                ) ??
-                approval.approverRoleKey!);
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final String line;
-    if (approval.isPending) {
-      line = 'ee.changes.approval.pending'.tr(args: {'who': _who()});
-    } else {
-      final by = approval.decidedByName ?? _who();
-      line = switch (approval.status) {
-        'approved' => 'ee.changes.approval.approved'.tr(args: {'who': by}),
-        'rejected' => 'ee.changes.approval.rejected'.tr(args: {'who': by}),
-        _ =>
-          AwI18n.instance.maybeTranslate(
-                'ee.approvals.status.${approval.status}',
-              ) ??
-              approval.status,
-      };
-    }
-    return Card(
-      key: Key('change-approval-${approval.id}'),
-      margin: const EdgeInsets.only(bottom: AwSpace.x2),
-      child: Padding(
-        padding: const EdgeInsets.all(AwSpace.x3),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  approval.isPending
-                      ? Icons.hourglass_top
-                      : approval.status == 'approved'
-                      ? Icons.verified_outlined
-                      : Icons.block,
-                  size: 20,
-                ),
-                const SizedBox(width: AwSpace.x2),
-                Expanded(child: Text(line, style: theme.textTheme.bodyMedium)),
-              ],
-            ),
-            if (approval.decisionReason != null) ...[
-              const SizedBox(height: AwSpace.x2),
-              Text(
-                '“${approval.decisionReason}”',
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
-            if (approval.canDecide) ...[
-              const SizedBox(height: AwSpace.x2),
-              Text(
-                'ee.changes.approval.yours'.tr(),
-                style: theme.textTheme.bodySmall,
-              ),
-              const SizedBox(height: AwSpace.x2),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    key: Key('change-approval-reject-${approval.id}'),
-                    onPressed: () => onDecide(false),
-                    child: Text('ee.approvals.reject'.tr()),
-                  ),
-                  const SizedBox(width: AwSpace.x2),
-                  FilledButton(
-                    key: Key('change-approval-approve-${approval.id}'),
-                    onPressed: () => onDecide(true),
-                    child: Text('ee.approvals.approve'.tr()),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
   }
 }
 

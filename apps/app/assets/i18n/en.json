@@ -634,7 +634,10 @@
     "APPROVAL_NOT_YOURS": "This approval was not asked of you.",
     "APPROVAL_ALREADY_DECIDED": "This approval has already been decided — the screen may be out of date.",
     "APPROVAL_REASON_REQUIRED": "Write the reason — both answers need one.",
-    "SERVICE_APPROVER_CANNOT_DECIDE": "Nobody holding that role may answer approvals — give the role the approval permission or pick another one."
+    "SERVICE_APPROVER_CANNOT_DECIDE": "Nobody holding that role may answer approvals — give the role the approval permission or pick another one.",
+    "APPROVAL_TARGET_NOT_EDITABLE": "Only a request can be corrected here.",
+    "TICKET_FIELD_REQUIRED": "A required question is unanswered.",
+    "TICKET_NO_FORM": "This request was not filed on a form, so it has no answers to correct."
   },
   "sync": {
     "noteConflict": "This note was edited on another device too — open it to compare.",
@@ -2755,7 +2758,40 @@
       "othersGroup": "Waiting on others in the team",
       "othersEmpty": "Nothing in the team is waiting on anybody else",
       "approvedToast": "Approved",
-      "rejectedToast": "Rejected"
+      "rejectedToast": "Rejected",
+      "detailTitle": "Approval",
+      "bannerYours": "Your decision is awaited",
+      "openedAt": "Opened {when}",
+      "noDescription": "No description was written.",
+      "internal": "Internal note",
+      "fileUnavailable": "This file cannot be downloaded from here right now.",
+      "summaryOnly": "This approval was not asked of you, so only its summary is shown — the request itself is its approver's to read.",
+      "requesterSide": "Requester",
+      "correct": "Correct the request",
+      "correctHint": "Fix what was written wrongly before you decide. The correction is kept in the request's history under your name.",
+      "correctSubject": "Subject",
+      "correctBody": "Description",
+      "corrected": "Correction saved — it shows in the request's history under your name",
+      "subjectRequired": "The subject cannot be empty",
+      "answerRequired": "\"{label}\" needs an answer",
+      "goneTitle": "This approval is gone",
+      "goneBody": "The request it was about has been archived, or it belongs to another team.",
+      "backToList": "Back to approvals",
+      "section": {
+        "requester": "Requested by",
+        "description": "Description",
+        "answers": "Form answers",
+        "files": "Attachments",
+        "conversation": "Conversation",
+        "signatures": "Signatures",
+        "ask": "The approval request",
+        "impact": "Impact"
+      },
+      "openTarget": {
+        "ee_ticket": "Open the request",
+        "ee_change": "Open the change",
+        "task": "Open the task"
+      }
     },
     "assets": {
       "status": {

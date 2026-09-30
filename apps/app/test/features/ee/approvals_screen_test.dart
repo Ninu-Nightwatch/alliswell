@@ -5,10 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/day_boundary.dart';
 import 'package:alliswell/src/features/ee/approvals_providers.dart';
-import 'package:alliswell/src/features/ee/changes_providers.dart';
+import 'package:alliswell/src/core/api_exception.dart';
 import 'package:alliswell/src/features/ee/data/approvals_models.dart';
 import 'package:alliswell/src/features/ee/ui/approvals_screen.dart';
-import 'package:alliswell/src/features/ee/ui/change_detail_screen.dart';
+import 'package:alliswell/src/features/ee/ui/approval_detail_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
@@ -50,10 +50,7 @@ EeApproval _approval({
   bool? canDecide,
   bool? live,
   EeApprovalContext? context,
-  EeApprovalProgress progress = const EeApprovalProgress(
-    total: 1,
-    pending: 1,
-  ),
+  EeApprovalProgress progress = const EeApprovalProgress(total: 1, pending: 1),
   String? requestedByName,
 }) => EeApproval(
   id: id,
@@ -91,9 +88,10 @@ Future<void> _pump(
         eeApprovalsProvider.overrideWith(() => _Fixed(items)),
         eeApprovalsSummaryProvider.overrideWith((ref) async => summary),
         nowProvider.overrideWithValue(() => _now),
-        // The change a row may open: quiet, so the test is about the row.
-        eeChangeOnDeviceProvider.overrideWith((ref, id) => Stream.value(null)),
-        eeChangeLiveProvider.overrideWith((ref, id) async => null),
+        // The approval a row opens: quiet, so the test is about the row.
+        eeApprovalDetailProvider.overrideWith(
+          (ref, id) async => throw const ApiException('HTTP_404', 'gone'),
+        ),
       ],
       child: MaterialApp(
         theme: buildAwTheme(Brightness.light),
@@ -110,8 +108,8 @@ void main() {
     AwI18n.instance.setActiveCached(const Locale('en'));
   });
 
-  testWidgets('EE-269: a change opens from its row — the board reads the plan '
-      'before signing it', (tester) async {
+  testWidgets('EE-295: every row opens its approval — a change\'s too, whose '
+      'page opens the change', (tester) async {
     await _pump(tester, [
       _approval(
         id: 'A2',
@@ -128,7 +126,15 @@ void main() {
 
     await tester.tap(find.byKey(const Key('ee-approval-open-A2')));
     await tester.pumpAndSettle();
-    expect(find.byType(EeChangeDetailScreen), findsOneWidget);
+    expect(find.byType(EeApprovalDetailScreen), findsOneWidget);
+  });
+
+  testWidgets('EE-295: a request\'s row opens too — it was a line with '
+      'nowhere to go', (tester) async {
+    await _pump(tester, [_approval()]);
+    await tester.tap(find.byKey(const Key('ee-approval-open-A1')));
+    await tester.pumpAndSettle();
+    expect(find.byType(EeApprovalDetailScreen), findsOneWidget);
   });
 
   testWidgets('an empty queue says nothing is waiting, not that it failed', (
