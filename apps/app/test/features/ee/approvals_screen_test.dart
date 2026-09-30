@@ -12,6 +12,8 @@ import 'package:alliswell/src/features/ee/ui/approval_detail_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
+import '../../support/list_rhythm.dart';
+
 /// EE-184 / EE-294 — the approvals screen, asserted where a redesign would
 /// mislead.
 ///
@@ -135,6 +137,19 @@ void main() {
     await tester.tap(find.byKey(const Key('ee-approval-open-A1')));
     await tester.pumpAndSettle();
     expect(find.byType(EeApprovalDetailScreen), findsOneWidget);
+  });
+
+  testWidgets('OPH-353: the rows keep the list rhythm, like every card list', (
+    tester,
+  ) async {
+    await _pump(tester, [
+      _approval(),
+      _approval(id: 'A2'),
+    ]);
+    expectCardRhythm(tester, [
+      cardAround(const Key('ee-approval-open-A1')),
+      cardAround(const Key('ee-approval-open-A2')),
+    ]);
   });
 
   testWidgets('an empty queue says nothing is waiting, not that it failed', (

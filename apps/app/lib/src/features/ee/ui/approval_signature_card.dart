@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/status_views.dart';
 import '../data/changes_models.dart';
 
 /// One signature asked about something — who, and what they said (EE-269).
@@ -58,7 +59,8 @@ class EeSignatureCard extends StatelessWidget {
     final decide = onDecide;
     return Card(
       key: Key('$keyPrefix-${approval.id}'),
-      margin: const EdgeInsets.only(bottom: AwSpace.x2),
+      // OPH-353: one rhythm for every card list (DESIGN §4).
+      margin: kAwListRowPadding,
       child: Padding(
         padding: const EdgeInsets.all(AwSpace.x3),
         child: Column(

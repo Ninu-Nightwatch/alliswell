@@ -211,16 +211,18 @@ class _ApprovalsTab extends ConsumerWidget {
                 style: text.bodyMedium,
               ),
             ),
-          for (final approval in open) ...[
-            EeApprovalCard(
-              key: ValueKey('ee-approval-${approval.id}'),
-              approval: approval,
-              onOpen: _opener(context, approval),
-              onDecide: (approve) =>
-                  _askForReason(context, ref, approval, approve: approve),
+          // OPH-353: the list rhythm every card list keeps (DESIGN §4).
+          for (final approval in open)
+            Padding(
+              padding: kAwListRowPadding,
+              child: EeApprovalCard(
+                key: ValueKey('ee-approval-${approval.id}'),
+                approval: approval,
+                onOpen: _opener(context, approval),
+                onDecide: (approve) =>
+                    _askForReason(context, ref, approval, approve: approve),
+              ),
             ),
-            const SizedBox(height: AwSpace.x2),
-          ],
           if (tab == 'role') const _OthersGroup(),
           if (settled.isNotEmpty)
             ExpansionTile(
@@ -233,13 +235,14 @@ class _ApprovalsTab extends ConsumerWidget {
                 style: text.titleSmall,
               ),
               children: [
-                for (final approval in settled) ...[
-                  EeApprovalCard(
-                    approval: approval,
-                    onOpen: _opener(context, approval),
+                for (final approval in settled)
+                  Padding(
+                    padding: kAwListRowPadding,
+                    child: EeApprovalCard(
+                      approval: approval,
+                      onOpen: _opener(context, approval),
+                    ),
                   ),
-                  const SizedBox(height: AwSpace.x2),
-                ],
               ],
             ),
         ],
@@ -289,13 +292,14 @@ class _OthersGroupState extends ConsumerState<_OthersGroup> {
                   )
                 : Column(
                     children: [
-                      for (final approval in rows) ...[
-                        EeApprovalCard(
-                          approval: approval,
-                          onOpen: _opener(context, approval),
+                      for (final approval in rows)
+                        Padding(
+                          padding: kAwListRowPadding,
+                          child: EeApprovalCard(
+                            approval: approval,
+                            onOpen: _opener(context, approval),
+                          ),
                         ),
-                        const SizedBox(height: AwSpace.x2),
-                      ],
                     ],
                   ),
           ),
