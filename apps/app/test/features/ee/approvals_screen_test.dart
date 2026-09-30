@@ -142,10 +142,7 @@ void main() {
   testWidgets('OPH-353: the rows keep the list rhythm, like every card list', (
     tester,
   ) async {
-    await _pump(tester, [
-      _approval(),
-      _approval(id: 'A2'),
-    ]);
+    await _pump(tester, [_approval(), _approval(id: 'A2')]);
     expectCardRhythm(tester, [
       cardAround(const Key('ee-approval-open-A1')),
       cardAround(const Key('ee-approval-open-A2')),

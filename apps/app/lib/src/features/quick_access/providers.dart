@@ -30,9 +30,7 @@ final quickAccessRowsProvider = StreamProvider<List<QuickAccessRow>>((
     yield const [];
     return;
   }
-  yield* ref
-      .read(quickAccessStoreProvider)
-      .watchMine(workspaceId, userId);
+  yield* ref.read(quickAccessStoreProvider).watchMine(workspaceId, userId);
 });
 
 /// Whether a given target already sits on the rail — what the entity menus

@@ -26,6 +26,5 @@ void expectCardRhythm(WidgetTester tester, List<Finder> cards) {
 }
 
 /// The card a keyed row lives in, when the key is on its tile.
-Finder cardAround(Key key) => find
-    .ancestor(of: find.byKey(key), matching: find.byType(Card))
-    .first;
+Finder cardAround(Key key) =>
+    find.ancestor(of: find.byKey(key), matching: find.byType(Card)).first;

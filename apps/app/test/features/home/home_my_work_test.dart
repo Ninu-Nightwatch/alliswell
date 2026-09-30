@@ -209,9 +209,13 @@ void main() {
   _TeamApi seeded() {
     final api = _TeamApi()
       ..task('MINE', _unitA, 'Pres bakımı', createdBy: _colleague, on: [_me])
-      ..task('THEIRS', _unitA, 'Kolega işi', createdBy: _colleague, on: [
-        _colleague,
-      ])
+      ..task(
+        'THEIRS',
+        _unitA,
+        'Kolega işi',
+        createdBy: _colleague,
+        on: [_colleague],
+      )
       ..task('MADE', _unitB, 'Vardiya notu', createdBy: _me)
       ..task('GIVEN', _unitB, 'Verdiğim iş', createdBy: _me, on: [_colleague])
       ..task('LOOSE', _unitB, 'Ortada kalan', createdBy: _colleague);

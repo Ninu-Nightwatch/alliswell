@@ -112,7 +112,12 @@ void main() {
         '(OPH-353)', (tester) async {
       await _pump(
         tester,
-        page: EeHistoryPage(items: [_event(), _event(id: 'E2')]),
+        page: EeHistoryPage(
+          items: [
+            _event(),
+            _event(id: 'E2'),
+          ],
+        ),
       );
       // A divider between two rows would make the gap 7 px, so the rhythm
       // itself proves they are gone (the filter bar keeps its own).

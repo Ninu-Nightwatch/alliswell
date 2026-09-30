@@ -53,11 +53,7 @@ final homeSearchResultsProvider =
       // own; a member's own work across every workspace they are in.
       final tasks = <SearchHit>[
         for (final workspaceId in scope.workspaceIds)
-          ...await service.searchTasks(
-            workspaceId,
-            query,
-            statuses: statuses,
-          ),
+          ...await service.searchTasks(workspaceId, query, statuses: statuses),
       ];
       if (scope.mineFor != null) {
         final mine = await ref.read(taskStoreProvider).idsIn(scope, statuses);

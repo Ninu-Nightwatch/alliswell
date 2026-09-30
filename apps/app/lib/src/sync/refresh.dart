@@ -17,9 +17,8 @@ Future<bool> refreshSection(WidgetRef ref, AppSection section) async {
   // other section shows the one on screen. Refreshing only that one left a
   // task assigned in another unit off Home until its slower pull came round.
   final engines = switch (section) {
-    AppSection.home || AppSection.inbox => [
-      ...ref.read(syncEnginesProvider).values,
-    ],
+    AppSection.home ||
+    AppSection.inbox => [...ref.read(syncEnginesProvider).values],
     _ => [?ref.read(syncEngineProvider)],
   };
   var ok = true;

@@ -206,10 +206,7 @@ final alarmLogRowsProvider = StreamProvider<List<AlarmEvent>>(
 );
 
 final reminderStoreProvider = Provider<ReminderStore>(
-  (ref) => ReminderStore(
-    ref.watch(databaseProvider),
-    () => pokeSync(ref),
-  ),
+  (ref) => ReminderStore(ref.watch(databaseProvider), () => pokeSync(ref)),
 );
 
 /// A one-shot probe of what alarm delivery the OS currently allows (OPH-139

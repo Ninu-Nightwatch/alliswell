@@ -40,7 +40,8 @@ class TaskScope {
       other.workspaceIds.every(workspaceIds.contains);
 
   @override
-  int get hashCode => Object.hash(mineFor, Object.hashAllUnordered(workspaceIds));
+  int get hashCode =>
+      Object.hash(mineFor, Object.hashAllUnordered(workspaceIds));
 
   Map<String, Object?> toJson() => {
     'workspaceIds': workspaceIds,
@@ -106,7 +107,9 @@ Future<({TaskScope scope, String userId})?> recallTaskScope({
   if (kept.isEmpty) return null;
   final me = scope.mineFor;
   return (
-    scope: me != null ? TaskScope.mine(kept, me) : TaskScope.workspace(kept.single),
+    scope: me != null
+        ? TaskScope.mine(kept, me)
+        : TaskScope.workspace(kept.single),
     userId: userId,
   );
 }

@@ -16,10 +16,7 @@ export 'data/note_store.dart'
 /// Local-first store (OPH-054): reads watch the drift replica, writes are
 /// optimistic + outbox'd.
 final noteStoreProvider = Provider<NoteStore>(
-  (ref) => NoteStore(
-    ref.watch(databaseProvider),
-    () => pokeSync(ref),
-  ),
+  (ref) => NoteStore(ref.watch(databaseProvider), () => pokeSync(ref)),
 );
 
 /// Note history (OPH-269) — an ONLINE surface: the list is fetched when the
@@ -106,9 +103,7 @@ final projectNotesProvider = StreamProvider.family<List<NoteRow>, String>((
     yield const [];
     return;
   }
-  yield* ref
-      .watch(noteStoreProvider)
-      .watchForProject(workspaceId, projectId);
+  yield* ref.watch(noteStoreProvider).watchForProject(workspaceId, projectId);
 });
 
 /// Full note for the editor — live, so pulled edits show up in place.

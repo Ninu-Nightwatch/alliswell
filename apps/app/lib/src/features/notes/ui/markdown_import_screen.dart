@@ -136,17 +136,14 @@ class _MarkdownImportScreenState extends ConsumerState<MarkdownImportScreen> {
       final title = _title.text.trim().isEmpty
           ? doc.baseName
           : _title.text.trim();
-      final noteId = await ref.read(noteStoreProvider).create(
-        workspaceId,
-        {
-          'title': title,
-          'projectId': _projectId,
-          // Byte-faithful: what the file said, minus the H1 that became the
-          // title. Nothing is re-encoded on the way in any more.
-          'contentMarkdown': _body,
-          'contentFormat': 'markdown',
-        },
-      );
+      final noteId = await ref.read(noteStoreProvider).create(workspaceId, {
+        'title': title,
+        'projectId': _projectId,
+        // Byte-faithful: what the file said, minus the H1 that became the
+        // title. Nothing is re-encoded on the way in any more.
+        'contentMarkdown': _body,
+        'contentFormat': 'markdown',
+      });
       messenger.showSnackBar(
         SnackBar(content: Text('note.mdImported'.tr(args: {'name': doc.name}))),
       );

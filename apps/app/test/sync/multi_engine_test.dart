@@ -173,10 +173,7 @@ void main() {
     expect(container.read(syncEnginesProvider).keys, {_unitA});
     // The probe: when access is really gone, the server's refusal to that
     // pull is what drops the replica (EE-058).
-    expect(
-      server.pulls.where((p) => p.startsWith(_unitB)).length,
-      before + 1,
-    );
+    expect(server.pulls.where((p) => p.startsWith(_unitB)).length, before + 1);
   });
 
   group('the one pull from the beginning (createdBy)', () {

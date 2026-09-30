@@ -154,9 +154,7 @@ void main() {
     Future<ProviderContainer> containerWith(String? selected) async {
       final container = ProviderContainer(
         overrides: [
-          currentUserIdProvider.overrideWithValue(
-            '01USERAAAAAAAAAAAAAAAAAAAA',
-          ),
+          currentUserIdProvider.overrideWithValue('01USERAAAAAAAAAAAAAAAAAAAA'),
           // The account's own workspace comes FIRST, as `/me` orders by id and
           // an account's own space is usually its oldest.
           workspacesProvider.overrideWith((ref) async => [own, muhasebe, saha]),
@@ -175,7 +173,10 @@ void main() {
     test('the content screens read the first unit, never the own '
         'workspace', () async {
       final container = await containerWith(null);
-      expect(await container.read(activeWorkspaceIdProvider.future), muhasebe.id);
+      expect(
+        await container.read(activeWorkspaceIdProvider.future),
+        muhasebe.id,
+      );
       expect(container.read(inSharedWorkspacesProvider), isTrue);
       expect(container.read(ownWorkspaceProvider)?.id, own.id);
     });
@@ -187,15 +188,16 @@ void main() {
 
     test('a selection that names the own workspace lands on a unit', () async {
       final container = await containerWith(own.id);
-      expect(await container.read(activeWorkspaceIdProvider.future), muhasebe.id);
+      expect(
+        await container.read(activeWorkspaceIdProvider.future),
+        muhasebe.id,
+      );
     });
 
     test('on one\'s own the one workspace is the content scope', () async {
       final container = ProviderContainer(
         overrides: [
-          currentUserIdProvider.overrideWithValue(
-            '01USERAAAAAAAAAAAAAAAAAAAA',
-          ),
+          currentUserIdProvider.overrideWithValue('01USERAAAAAAAAAAAAAAAAAAAA'),
           workspacesProvider.overrideWith((ref) async => [own]),
         ],
       );

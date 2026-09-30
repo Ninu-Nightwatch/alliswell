@@ -226,10 +226,8 @@ final workspaceFilesUsageProvider =
 
 /// OPH-170 — the Dosyalar section's local-first folder machinery (ADR-0014).
 final folderStoreProvider = Provider<FolderStore>(
-  (ref) => FolderStore(
-    ref.watch(databaseProvider),
-    onMutation: () => pokeSync(ref),
-  ),
+  (ref) =>
+      FolderStore(ref.watch(databaseProvider), onMutation: () => pokeSync(ref)),
 );
 
 /// The workspace's whole live folder tree, name-ordered.
@@ -266,7 +264,5 @@ final workspaceAttachedFilesProvider =
         yield const [];
         return;
       }
-      yield* ref
-          .read(fileStoreProvider)
-          .watchWorkspaceAttached(workspaceId);
+      yield* ref.read(fileStoreProvider).watchWorkspaceAttached(workspaceId);
     });

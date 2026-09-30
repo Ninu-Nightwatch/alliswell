@@ -21,10 +21,7 @@ final projectsShowArchivedProvider =
 /// Local-first store (OPH-054): reads watch the drift replica, writes are
 /// optimistic + outbox'd.
 final projectStoreProvider = Provider<ProjectStore>(
-  (ref) => ProjectStore(
-    ref.watch(databaseProvider),
-    () => pokeSync(ref),
-  ),
+  (ref) => ProjectStore(ref.watch(databaseProvider), () => pokeSync(ref)),
 );
 
 /// Projects of the current workspace (sort_order, created_at) — live from the

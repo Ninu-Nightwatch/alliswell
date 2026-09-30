@@ -58,8 +58,7 @@ final listedTagsProvider = StreamProvider<List<Tag>>((ref) {
 /// creates in: a task opened from Home may live in a unit other than the one
 /// selected, and a tag from another workspace cannot be put on it.
 final workspaceTagsProvider = StreamProvider.family<List<Tag>, String>(
-  (ref, workspaceId) =>
-      _watchTags(ref.watch(databaseProvider), [workspaceId]),
+  (ref, workspaceId) => _watchTags(ref.watch(databaseProvider), [workspaceId]),
 );
 
 Stream<List<Tag>> _watchTags(AwDatabase db, List<String> workspaceIds) =>
@@ -76,10 +75,8 @@ Stream<List<Tag>> _watchTags(AwDatabase db, List<String> workspaceIds) =>
 
 /// Local-first tag writes (create/rename/recolor/delete) — OPH-165.
 final tagStoreProvider = Provider<TagStore>(
-  (ref) => TagStore(
-    ref.watch(databaseProvider),
-    onMutation: () => pokeSync(ref),
-  ),
+  (ref) =>
+      TagStore(ref.watch(databaseProvider), onMutation: () => pokeSync(ref)),
 );
 
 /// Tags of the current workspace (sorted by name) — live from the local

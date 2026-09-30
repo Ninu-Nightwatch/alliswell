@@ -226,11 +226,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
         });
         // A task somebody adds is theirs until they give it away: in an
         // organisation's workspaces its author is put on it.
-        await claimIfShared(
-          ref.read,
-          workspaceId: workspaceId,
-          taskId: taskId,
-        );
+        await claimIfShared(ref.read, workspaceId: workspaceId, taskId: taskId);
         // OPH-208: the task exists now, so the series has something to adopt —
         // its own day becomes the first occurrence instead of a duplicate.
         final rule = _repeatRule;

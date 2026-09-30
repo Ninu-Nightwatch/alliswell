@@ -367,10 +367,7 @@ void main() {
       addTearDown(badge.close);
       expect(await container.read(unreadNotificationCountProvider.future), 2);
 
-      expect(
-        await NotificationStore(db).markAllRead(const [ws, other]),
-        2,
-      );
+      expect(await NotificationStore(db).markAllRead(const [ws, other]), 2);
       final queued = await db.select(db.pendingMutations).get();
       // Each mark goes out through its own workspace's outbox.
       expect({for (final m in queued) m.workspaceId}, {ws, other});
