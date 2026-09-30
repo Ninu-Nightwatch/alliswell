@@ -24,6 +24,7 @@ import { slugify } from '../lib/slug.js';
 import { isValidDelta, markdownToPlainText } from '../lib/delta.js';
 import { recordSyncWrite } from '../db/sync.js';
 import { notifyEntityWrite } from '../lib/ee.js';
+import { deleteTaskTree } from '../db/tasks.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
 import { captureNoteVersion } from '../db/note-versions.js';
 import { noteMarkdownFrom, storeConflictVersion, threeWayNoteWrite } from '../db/notes.js';
@@ -1126,47 +1127,13 @@ export default async function syncRoutes(app) {
         }
       },
       // Soft delete cascades through the subtree, one revision per task, and
-      // silences reminders — mirrors DELETE /tasks/:id.
+      // silences reminders — the same walk as DELETE /tasks/:id, one function.
       async customDelete(trx, ctx, row) {
-        let frontier = [row.id];
-        const seen = new Set(frontier);
-        let headRevision;
-        while (frontier.length > 0) {
-          for (const id of frontier) {
-            const revision = await recordSyncWrite(trx, {
-              workspaceId: ctx.workspaceId,
-              entityType: 'task',
-              entityId: id,
-              operation: 'delete',
-            });
-            if (id === row.id) headRevision = revision;
-            await trx('tasks').where({ id }).update({
-              deleted_at: new Date(),
-              revision,
-              updated_by: ctx.userId,
-              updated_at: new Date(),
-            });
-            const fresh = await trx('tasks').where({ id }).first();
-            await reconcileTaskReminder(trx, { workspaceId: ctx.workspaceId, task: fresh });
-          }
-          const children = await trx('tasks')
-            .whereIn('parent_task_id', frontier)
-            .whereNull('deleted_at')
-            .select('id');
-          frontier = children.map((c) => c.id).filter((id) => !seen.has(id));
-          for (const id of frontier) seen.add(id);
-        }
-        // Every task in the subtree takes its attachments with it (Epic 14)
-        // and every member's shortcut to it (OPH-197) — subtasks included.
-        await cascadeDeleteFiles(trx, app, {
+        return deleteTaskTree(app, trx, {
           workspaceId: ctx.workspaceId,
-          targets: [...seen].map((id) => ({ type: 'task', id })),
+          rootId: row.id,
+          userId: ctx.userId,
         });
-        await cascadeDeleteQuickLinks(trx, {
-          workspaceId: ctx.workspaceId,
-          targets: [...seen].map((id) => ({ type: 'task', id })),
-        });
-        return headRevision;
       },
     },
 
@@ -1665,13 +1632,23 @@ export default async function syncRoutes(app) {
         await recordRow(app.db, ctx, mutation, outcome);
       }
     } catch (err) {
-      if (err?.code !== 'ER_DUP_ENTRY') throw err;
-      // Lost an idempotency race (uq_client_mutation or an entity unique
-      // index): trust the recorded result / report the entity conflict.
-      const recorded = await findRecorded(ctx, mutation);
-      if (recorded) return { clientMutationId: mutation.clientMutationId, ...recorded };
-      outcome = rejected(ENTITIES[mutation.entityType]?.duplicateCode ?? 'SYNC_ENTITY_EXISTS');
-      await recordRow(app.db, ctx, mutation, outcome);
+      if (err?.syncRefusal) {
+        // An extension refused the write from inside its transaction (see
+        // `syncRefusal`): the write rolled back, and the answer is an ordinary
+        // `rejected` — recorded, so a replay gets the same answer, and rebased
+        // below like any other refusal. Rethrowing would fail the whole push
+        // and the device would resend this write on every retry, forever.
+        outcome = rejected(err.syncRefusal);
+        await recordRow(app.db, ctx, mutation, outcome);
+      } else {
+        if (err?.code !== 'ER_DUP_ENTRY') throw err;
+        // Lost an idempotency race (uq_client_mutation or an entity unique
+        // index): trust the recorded result / report the entity conflict.
+        const recorded = await findRecorded(ctx, mutation);
+        if (recorded) return { clientMutationId: mutation.clientMutationId, ...recorded };
+        outcome = rejected(ENTITIES[mutation.entityType]?.duplicateCode ?? 'SYNC_ENTITY_EXISTS');
+        await recordRow(app.db, ctx, mutation, outcome);
+      }
     }
 
     return {

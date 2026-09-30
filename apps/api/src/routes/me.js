@@ -46,6 +46,11 @@ const meResponseSchema = {
           colorRgb: { type: 'string' },
           icon: { type: ['string', 'null'] },
           role: { type: 'string', enum: ['owner', 'admin', 'member'] },
+          // Whether this account OWNS the workspace — not the same question as
+          // `role: owner`, which a member can hold in a workspace somebody
+          // else created. A client decides which space is the person's own
+          // from this, never from the list's order or from the role.
+          owned: { type: 'boolean' },
         },
       },
     },
@@ -89,7 +94,11 @@ async function loadMe(app, userId) {
           .db('workspaces')
           .whereIn('id', [...roleByWorkspace.keys()])
           .whereNull('deleted_at')
-          .select('id', 'name', 'slug', 'color_rgb', 'icon');
+          // The order the list always HAD (primary key), now asked for: a
+          // client falling back to the first workspace must get the same one
+          // on every call, not whatever the plan chooses.
+          .orderBy('id')
+          .select('id', 'name', 'slug', 'color_rgb', 'icon', 'owner_id');
 
   return {
     user: {
@@ -111,6 +120,7 @@ async function loadMe(app, userId) {
       colorRgb: ws.color_rgb,
       icon: ws.icon ?? null,
       role: roleByWorkspace.get(ws.id),
+      owned: ws.owner_id === user.id,
     })),
   };
 }

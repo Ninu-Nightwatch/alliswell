@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
+import { newId } from '../../src/lib/ids.js';
 
 // Needs real MySQL + Redis with migrations applied.
 const enabled = process.env.INTEGRATION === '1';
@@ -46,7 +47,7 @@ describe.runIf(enabled)('integration: GET /api/v1/me (Epic 03 acceptance)', () =
     expect(first.statusCode).toBe(200);
     expect(first.json().user).toMatchObject({ id: registered.user.id, email });
     expect(first.json().workspaces).toEqual([
-      expect.objectContaining({ id: registered.workspace.id, role: 'owner' }),
+      expect.objectContaining({ id: registered.workspace.id, role: 'owner', owned: true }),
     ]);
 
     // Rotate the session and use the NEW access token.
@@ -63,6 +64,55 @@ describe.runIf(enabled)('integration: GET /api/v1/me (Epic 03 acceptance)', () =
     });
     expect(second.statusCode).toBe(200);
     expect(second.json().user.id).toBe(registered.user.id);
+  });
+
+  it("says which workspace is the account's own, and lists them in one order", async () => {
+    // Two accounts; the second is also a member of the first one's workspace
+    // (the membership a shared space gives, written as a row here because core
+    // has no invitation of its own). `role` cannot tell the two apart for the
+    // guest — `owned` can, and it is what a client must read.
+    const reg = async (tag) =>
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/v1/auth/register',
+          payload: { email: `${emailPrefix}-${tag}@example.com`, password: 'acceptance-pw-1' },
+        })
+      ).json();
+    const host = await reg('host');
+    const guest = await reg('guest');
+    await app.db('workspace_members').insert({
+      id: newId(),
+      workspace_id: host.workspace.id,
+      user_id: guest.user.id,
+      role: 'owner',
+    });
+
+    const me = await app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: { authorization: `Bearer ${guest.tokens.accessToken}` },
+    });
+    expect(me.statusCode).toBe(200);
+    const listed = me.json().workspaces;
+    expect(listed.map((w) => [w.id, w.owned])).toEqual(
+      [
+        [host.workspace.id, false],
+        [guest.workspace.id, true],
+      ].sort((a, b) => a[0].localeCompare(b[0])),
+    );
+    // The order is the id order, asked for — the same on every call.
+    const again = await app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: { authorization: `Bearer ${guest.tokens.accessToken}` },
+    });
+    expect(again.json().workspaces.map((w) => w.id)).toEqual(listed.map((w) => w.id));
+
+    await app
+      .db('workspace_members')
+      .where({ user_id: guest.user.id, workspace_id: host.workspace.id })
+      .delete();
   });
 
   it('rejects unauthenticated and cross-signed requests', async () => {

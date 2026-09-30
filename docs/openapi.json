@@ -3325,6 +3325,9 @@
                               "admin",
                               "member"
                             ]
+                          },
+                          "owned": {
+                            "type": "boolean"
                           }
                         }
                       }
@@ -3455,6 +3458,9 @@
                               "admin",
                               "member"
                             ]
+                          },
+                          "owned": {
+                            "type": "boolean"
                           }
                         }
                       }
@@ -8524,6 +8530,10 @@
                       "type": "string",
                       "nullable": true
                     },
+                    "createdBy": {
+                      "type": "string",
+                      "nullable": true
+                    },
                     "revision": {
                       "type": "integer"
                     },
@@ -8921,6 +8931,10 @@
                       "type": "boolean"
                     },
                     "completedAt": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "createdBy": {
                       "type": "string",
                       "nullable": true
                     },
@@ -9674,6 +9688,10 @@
                       "type": "string",
                       "nullable": true
                     },
+                    "createdBy": {
+                      "type": "string",
+                      "nullable": true
+                    },
                     "revision": {
                       "type": "integer"
                     },
@@ -10153,6 +10171,10 @@
                       "type": "string",
                       "nullable": true
                     },
+                    "createdBy": {
+                      "type": "string",
+                      "nullable": true
+                    },
                     "revision": {
                       "type": "integer"
                     },
@@ -10468,6 +10490,10 @@
                       "type": "boolean"
                     },
                     "completedAt": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "createdBy": {
                       "type": "string",
                       "nullable": true
                     },
@@ -10792,6 +10818,10 @@
                       "type": "boolean"
                     },
                     "completedAt": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "createdBy": {
                       "type": "string",
                       "nullable": true
                     },
@@ -16128,6 +16158,10 @@
                       "type": "string",
                       "nullable": true
                     },
+                    "createdBy": {
+                      "type": "string",
+                      "nullable": true
+                    },
                     "revision": {
                       "type": "integer"
                     },
@@ -16487,6 +16521,10 @@
                             "type": "boolean"
                           },
                           "completedAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "createdBy": {
                             "type": "string",
                             "nullable": true
                           },

@@ -1,5 +1,6 @@
 import { newId } from '../lib/ids.js';
 import { buildReminderPayload, buildWakePayload } from '../lib/push/payload.js';
+import { reminderAudiences } from '../lib/ee.js';
 
 /**
  * The due sweep (OPH-315, ADR-0038 §1/§2/§3) — the first thing in AllisWell
@@ -107,10 +108,13 @@ export async function findDueReminders(db, { from, to }) {
  * (`test/helpers/fakedb.js`), which is where the idempotency of this path is
  * actually proved.
  */
-async function devicesByReminder(db, reminders, { providers }) {
+async function devicesByReminder(db, reminders, { providers, narrow = null }) {
   const taskIds = [...new Set(reminders.map((r) => r.task_id))];
   const tasks = await db('tasks').whereIn('id', taskIds).select('id', 'workspace_id');
   const workspaceOf = new Map(tasks.map((t) => [t.id, t.workspace_id]));
+  // Who each task's reminder is FOR, when an extension says (registerReminderAudience):
+  // a subset of the workspace's members, never anyone beyond them.
+  const audienceOf = narrow ? await narrow(tasks) : new Map();
 
   const workspaceIds = [...new Set(tasks.map((t) => t.workspace_id))];
   const members = await db('workspace_members')
@@ -159,7 +163,9 @@ async function devicesByReminder(db, reminders, { providers }) {
   const out = new Map();
   for (const reminder of reminders) {
     const workspaceId = workspaceOf.get(reminder.task_id);
-    const users = usersOf.get(workspaceId) ?? [];
+    const members = usersOf.get(workspaceId) ?? [];
+    const audience = audienceOf.get(reminder.task_id);
+    const users = audience ? members.filter((userId) => audience.has(userId)) : members;
     out.set(
       reminder.id,
       users.flatMap((userId) => devicesOf.get(userId) ?? []).filter((d) => needsPush(d, reminder)),
@@ -212,6 +218,7 @@ export async function sweepDuePushes(app, { now = new Date() } = {}) {
 
   const targets = await devicesByReminder(app.db, reminders, {
     providers: app.pushTransport.providers,
+    narrow: (tasks) => reminderAudiences(app, app.db, tasks),
   });
 
   let claimed = 0;

@@ -294,6 +294,89 @@ describe('EE overlay seam (EE-002)', () => {
     });
   });
 
+  it('an observer refusal reaches REST as a 409 and the push as a rejected mutation', async () => {
+    // The fixture's observer refuses completing a task titled "refuse me" from
+    // inside the write. What core owes is the SHAPE of that refusal on every
+    // door. (The rollback itself needs a real transaction: the fake db has
+    // none, so integration/write-refusal.test.js proves it against MySQL.)
+    ({ app } = await buildTestApp({ config: eeConfig(FIXTURE_DIR) }));
+    const owner = await registerUser(app, { email: 'seam-refusal@example.com' });
+    const make = async (title) =>
+      (
+        await app.inject({
+          method: 'POST',
+          url: `/api/v1/workspaces/${owner.workspace.id}/tasks`,
+          headers: owner.headers,
+          payload: { title },
+        })
+      ).json().id;
+
+    const viaRest = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tasks/${await make('refuse me')}/complete`,
+      headers: owner.headers,
+    });
+    expect(viaRest.statusCode).toBe(409);
+    expect(viaRest.json().code).toBe('SEAM_REFUSED');
+
+    // PATCH used to change a status without telling any observer.
+    const viaPatch = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/tasks/${await make('refuse me')}`,
+      headers: owner.headers,
+      payload: { status: 'completed' },
+    });
+    expect(viaPatch.statusCode).toBe(409);
+    expect(viaPatch.json().code).toBe('SEAM_REFUSED');
+
+    // The push answers like a guard's refusal instead of failing the batch.
+    // The task first: its row must be older than the device's stamp below.
+    const pushed = await make('refuse me');
+    const viaPush = await app.inject({
+      method: 'POST',
+      url: '/api/v1/sync/push',
+      headers: owner.headers,
+      payload: {
+        clientId: CLIENT_ID,
+        workspaceId: owner.workspace.id,
+        baseRevision: 0,
+        mutations: [
+          {
+            clientMutationId: newId(),
+            // A device always stamps its write; without it LWW treats the
+            // write as older than the row and it never reaches the observer.
+            // A minute ahead: equal milliseconds read as the older write (LWW).
+            localUpdatedAt: new Date(Date.now() + 60_000).toISOString(),
+            entityType: 'task',
+            entityId: pushed,
+            operation: 'update',
+            patch: { status: 'completed' },
+          },
+        ],
+      },
+    });
+    expect(viaPush.statusCode).toBe(200);
+    expect(viaPush.json().results[0]).toMatchObject({
+      status: 'rejected',
+      errorCode: 'SEAM_REFUSED',
+    });
+
+    // Passive for everything else.
+    const plain = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tasks/${await make('plain')}/complete`,
+      headers: owner.headers,
+    });
+    expect(plain.statusCode).toBeLessThan(300);
+    // And the audience resolver registered beside it (push-due.test.js runs one).
+    expect(app.ee.reminderAudiences).toHaveLength(1);
+  });
+
+  it('CE has no reminder audience: the list is empty and core keeps its own', async () => {
+    ({ app } = await buildTestApp());
+    expect(app.ee.reminderAudiences).toEqual([]);
+  });
+
   it('lists and calls an overlay MCP tool through the full dance', async () => {
     ({ app } = await buildTestApp({ config: eeConfig(FIXTURE_DIR) }));
     await registerUser(app, { email: 'seam-mcp@example.com' });

@@ -1,8 +1,5 @@
 import { toIso } from '../lib/serialize.js';
 import { recordSyncWrite } from '../db/sync.js';
-import { reconcileTaskReminder } from '../db/reminders.js';
-import { cascadeDeleteFiles } from '../db/files.js';
-import { cascadeDeleteQuickLinks } from '../db/quick-links.js';
 import { SERIES_SCOPES, occurrenceDayOf } from '../db/task-series.js';
 // OPH-218 (extended by OPH-262): create/update/transition/snooze/tags/
 // checklist and the detail loader live in the domain layer so the MCP tools
@@ -59,6 +56,9 @@ const taskSchema = {
     sortOrder: { type: 'integer' },
     calendarMirrorEnabled: { type: 'boolean' },
     completedAt: { type: ['string', 'null'] },
+    // Who made it — server-owned, read-only, like the series fields. A shared
+    // workspace's lists need it to tell somebody's own task from everyone's.
+    createdBy: { type: ['string', 'null'] },
     revision: { type: 'integer' },
     createdAt: { type: 'string' },
     updatedAt: { type: 'string' },
@@ -166,6 +166,7 @@ export function serializeTask(row) {
     sortOrder: row.sort_order,
     calendarMirrorEnabled: Boolean(row.calendar_mirror_enabled),
     completedAt: toIso(row.completed_at),
+    createdBy: row.created_by ?? null,
     revision: Number(row.revision),
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
@@ -457,46 +458,14 @@ export default async function taskRoutes(app) {
       const row = await loadTask(request.params.taskId);
       await app.requireWorkspaceMember(request, row.workspace_id);
 
-      await app.db.transaction(async (trx) => {
-        // Soft delete the whole subtree; every task is its own sync entity, so
-        // each level gets its own revision + log row.
-        let frontier = [row.id];
-        const seen = new Set(frontier);
-        while (frontier.length > 0) {
-          for (const id of frontier) {
-            const revision = await recordSyncWrite(trx, {
-              workspaceId: row.workspace_id,
-              entityType: 'task',
-              entityId: id,
-              operation: 'delete',
-            });
-            await trx('tasks').where({ id }).update({
-              deleted_at: new Date(),
-              revision,
-              updated_by: request.user.id,
-              updated_at: new Date(),
-            });
-            const fresh = await trx('tasks').where({ id }).first();
-            await reconcileTaskReminder(trx, { workspaceId: row.workspace_id, task: fresh });
-          }
-          const children = await trx('tasks')
-            .whereIn('parent_task_id', frontier)
-            .whereNull('deleted_at')
-            .select('id');
-          frontier = children.map((c) => c.id).filter((id) => !seen.has(id));
-          for (const id of frontier) seen.add(id);
-        }
-        // Every task in the subtree takes its attachments with it (Epic 14)
-        // and every member's shortcut to it (OPH-197) — subtasks included.
-        await cascadeDeleteFiles(trx, app, {
+      // Soft delete the whole subtree — the walk the sync push uses too.
+      await app.db.transaction((trx) =>
+        taskDb.deleteTaskTree(app, trx, {
           workspaceId: row.workspace_id,
-          targets: [...seen].map((id) => ({ type: 'task', id })),
-        });
-        await cascadeDeleteQuickLinks(trx, {
-          workspaceId: row.workspace_id,
-          targets: [...seen].map((id) => ({ type: 'task', id })),
-        });
-      });
+          rootId: row.id,
+          userId: request.user.id,
+        }),
+      );
 
       return reply.code(204).send();
     },

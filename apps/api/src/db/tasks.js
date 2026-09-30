@@ -5,6 +5,19 @@ import { recordSyncWrite } from './sync.js';
 import { notifyEntityWrite } from '../lib/ee.js';
 import { reconcileTaskReminder } from './reminders.js';
 import { propagateSeriesScope } from './task-series.js';
+import { cascadeDeleteFiles } from './files.js';
+import { cascadeDeleteQuickLinks } from './quick-links.js';
+
+/**
+ * Runs `work` inside the caller's transaction when one is given, or in a new
+ * one. The write functions below take an optional `trx` so a caller that must
+ * change a task TOGETHER with rows of its own (a second record that has to
+ * agree with the task) can do both in one commit, with the same revision,
+ * reminder and observer bookkeeping as every other door.
+ */
+function inTransaction(app, trx, work) {
+  return trx ? work(trx) : app.db.transaction(work);
+}
 
 /**
  * The task domain layer (OPH-218, ADR-0022 §4): create, update, status
@@ -197,7 +210,7 @@ export async function assertTagsUsable(app, tagIds, workspaceId) {
  * default, sync revision, tag links and reminder reconcile in ONE
  * transaction. Returns the new task id.
  */
-export async function createTask(app, { workspaceId, userId, body: rawBody }) {
+export async function createTask(app, { workspaceId, userId, body: rawBody, trx: outer = null }) {
   const { tagIds = [], ...body } = rawBody;
   if (body.projectId) await assertProjectUsable(app, body.projectId, workspaceId);
   if (body.parentTaskId) await assertParentUsable(app, body.parentTaskId, workspaceId, null);
@@ -209,7 +222,7 @@ export async function createTask(app, { workspaceId, userId, body: rawBody }) {
   }
 
   const id = newId();
-  await app.db.transaction(async (trx) => {
+  await inTransaction(app, outer, async (trx) => {
     const revision = await recordSyncWrite(trx, {
       workspaceId,
       entityType: 'task',
@@ -243,7 +256,7 @@ export async function createTask(app, { workspaceId, userId, body: rawBody }) {
  *
  * `body` is the REST PATCH body (camelCase); `seriesScope` rides along in it.
  */
-export async function updateTask(app, { row, userId, body }) {
+export async function updateTask(app, { row, userId, body, trx: outer = null }) {
   // Archived tasks accept exactly one write: a lone `status` unarchiving them.
   const isUnarchive =
     Object.keys(body).length === 1 && body.status !== undefined && body.status !== 'archived';
@@ -261,7 +274,7 @@ export async function updateTask(app, { row, userId, body }) {
     ...toRowPatch(body),
     ...(body.status !== undefined ? completionPatch(row.status, body.status) : {}),
   };
-  await app.db.transaction(async (trx) => {
+  await inTransaction(app, outer, async (trx) => {
     const revision = await recordSyncWrite(trx, {
       workspaceId: row.workspace_id,
       entityType: 'task',
@@ -281,13 +294,26 @@ export async function updateTask(app, { row, userId, body }) {
       scope: body.seriesScope,
       userId,
     });
+    // The same description the sync push gives its observers — both sides of
+    // the row. PATCH (and MCP's update_task, which is this function) used to
+    // change a task's status without telling them, so a completion made here
+    // was invisible to anything derived from completions.
+    await notifyEntityWrite(app, trx, {
+      workspaceId: row.workspace_id,
+      entityType: 'task',
+      entityId: row.id,
+      operation: 'update',
+      actorId: userId,
+      before: row,
+      after: fresh,
+    });
   });
 }
 
 /** One status transition with the shared revision + reminder bookkeeping. */
-export async function applyStatusTransition(app, { userId, row, toStatus }) {
+export async function applyStatusTransition(app, { userId, row, toStatus, trx: outer = null }) {
   const patch = { status: toStatus, ...completionPatch(row.status, toStatus) };
-  await app.db.transaction(async (trx) => {
+  await inTransaction(app, outer, async (trx) => {
     const revision = await recordSyncWrite(trx, {
       workspaceId: row.workspace_id,
       entityType: 'task',
@@ -320,15 +346,15 @@ export async function applyStatusTransition(app, { userId, row, toStatus }) {
 }
 
 /** Idempotent completion (REST semantics: no revision burned on a repeat). */
-export async function completeTask(app, { userId, row }) {
+export async function completeTask(app, { userId, row, trx = null }) {
   assertNotArchived(app, row);
   if (row.status === 'completed') return false;
-  await applyStatusTransition(app, { userId, row, toStatus: 'completed' });
+  await applyStatusTransition(app, { userId, row, toStatus: 'completed', trx });
   return true;
 }
 
 /** Back to `open` — only a finished task can be reopened (OPH-033). */
-export async function reopenTask(app, { userId, row }) {
+export async function reopenTask(app, { userId, row, trx = null }) {
   assertNotArchived(app, row);
   if (row.status !== 'completed' && row.status !== 'cancelled') {
     throw coded(
@@ -336,7 +362,66 @@ export async function reopenTask(app, { userId, row }) {
       'TASK_INVALID_TRANSITION',
     );
   }
-  await applyStatusTransition(app, { userId, row, toStatus: 'open' });
+  await applyStatusTransition(app, { userId, row, toStatus: 'open', trx });
+}
+
+/**
+ * Soft-deletes a task and its whole subtree inside the CALLER's transaction:
+ * one revision per task (every task is its own sync entity), reminders
+ * silenced, and every attachment and every member's shortcut to any of them
+ * removed with it (Epic 14, OPH-197). Returns the root's revision.
+ *
+ * The REST delete and the sync push's delete are this one function — they had
+ * been two copies of the same walk, and a rule added to one would have been
+ * missing from the other.
+ */
+export async function deleteTaskTree(app, trx, { workspaceId, rootId, userId }) {
+  let frontier = [rootId];
+  const seen = new Set(frontier);
+  let rootRevision;
+  while (frontier.length > 0) {
+    for (const id of frontier) {
+      const before = await trx('tasks').where({ id }).first();
+      const revision = await recordSyncWrite(trx, {
+        workspaceId,
+        entityType: 'task',
+        entityId: id,
+        operation: 'delete',
+      });
+      if (id === rootId) rootRevision = revision;
+      await trx('tasks').where({ id }).update({
+        deleted_at: new Date(),
+        revision,
+        updated_by: userId,
+        updated_at: new Date(),
+      });
+      const fresh = await trx('tasks').where({ id }).first();
+      await reconcileTaskReminder(trx, { workspaceId, task: fresh });
+      // Deletions are described too, one per task, whichever door asked (REST
+      // DELETE and the push's delete both come through here) — so an observer
+      // that keeps a record in step with a task can account for its end, or
+      // refuse it (`syncRefusal`), the same way on every door.
+      await notifyEntityWrite(app, trx, {
+        workspaceId,
+        entityType: 'task',
+        entityId: id,
+        operation: 'delete',
+        actorId: userId,
+        before,
+        after: null,
+      });
+    }
+    const children = await trx('tasks')
+      .whereIn('parent_task_id', frontier)
+      .whereNull('deleted_at')
+      .select('id');
+    frontier = children.map((c) => c.id).filter((id) => !seen.has(id));
+    for (const id of frontier) seen.add(id);
+  }
+  const targets = [...seen].map((id) => ({ type: 'task', id }));
+  await cascadeDeleteFiles(trx, app, { workspaceId, targets });
+  await cascadeDeleteQuickLinks(trx, { workspaceId, targets });
+  return rootRevision;
 }
 
 /**

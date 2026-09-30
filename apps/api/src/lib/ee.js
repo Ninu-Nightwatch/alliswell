@@ -68,6 +68,10 @@ export async function loadEeOverlay(app) {
     aiConnectionResolvers: [],
     syncMutationGuards: [],
     entityWriteObservers: [],
+    // Who a task's reminder rings for, narrowed. Empty here IS the plain build:
+    // every member of the task's workspace, which in a one-person workspace is
+    // the one person.
+    reminderAudiences: [],
     corsOriginChecks: [],
     accountPurgeFilters: [],
     statusDecorators: [],
@@ -489,6 +493,26 @@ function buildSeam(state) {
     },
 
     /**
+     * Reminder audiences: `async (db, tasks) => Map<taskId, userId[]>`, where
+     * `tasks` are `{ id, workspace_id }` rows about to ring.
+     *
+     * Core pushes a due reminder to every member of the task's workspace — the
+     * devices that schedule the alarm locally (ADR-0038 §5). In a workspace
+     * several people share, most of them have nothing to do with a given task,
+     * and an alarm is the loudest thing this product does. A resolver may say
+     * who a task's reminder is FOR. It can only NARROW: its answer is
+     * intersected with the workspace's members, so it can never reach somebody
+     * outside the workspace. A task it leaves out of the map keeps the plain
+     * audience.
+     */
+    registerReminderAudience(resolver) {
+      if (typeof resolver !== 'function') {
+        throw new Error('registerReminderAudience: a function is required');
+      }
+      state.reminderAudiences.push(resolver);
+    },
+
+    /**
      * Sign-in requirements: `async (ctx) => null | { code, message }`.
      *
      * Consulted by `/auth/login` AFTER the password and any second factor have
@@ -636,6 +660,42 @@ function buildSeam(state) {
  *          operation: 'create'|'update'|'delete', actorId?: string|null,
  *          before?: object|null, after?: object|null}} change
  */
+/**
+ * The narrowed audience for each task an extension has an opinion on (see
+ * `registerReminderAudience`), keyed by task id. Empty with no extension —
+ * every plain build — so the caller's own audience stands. A resolver that
+ * throws narrows nothing: a reminder ringing for too many is recoverable, one
+ * that rings for nobody is not.
+ *
+ * @param {import('fastify').FastifyInstance} app
+ * @param {import('knex').Knex} db
+ * @param {{id: string, workspace_id: string}[]} tasks
+ * @returns {Promise<Map<string, Set<string>>>}
+ */
+export async function reminderAudiences(app, db, tasks) {
+  const out = new Map();
+  const resolvers = app.ee?.reminderAudiences;
+  if (!resolvers || resolvers.length === 0 || tasks.length === 0) return out;
+  for (const resolver of resolvers) {
+    let answer;
+    try {
+      answer = await resolver(db, tasks);
+    } catch (err) {
+      app.log?.warn({ err: err?.message }, 'reminder audience resolver failed');
+      continue;
+    }
+    if (!(answer instanceof Map)) continue;
+    for (const [taskId, userIds] of answer) {
+      if (!Array.isArray(userIds)) continue;
+      const next = new Set(userIds);
+      const prev = out.get(taskId);
+      // Two resolvers narrow together: somebody both of them name.
+      out.set(taskId, prev ? new Set([...prev].filter((u) => next.has(u))) : next);
+    }
+  }
+  return out;
+}
+
 export async function notifyEntityWrite(app, trx, change) {
   const observers = app.ee?.entityWriteObservers;
   if (!observers || observers.length === 0) return;

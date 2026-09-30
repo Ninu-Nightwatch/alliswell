@@ -989,7 +989,8 @@ curl -X GET 'https://api.alliswell.space/api/v1/me' \
       "slug": "pay-the-electricity-bill",
       "colorRgb": "string",
       "icon": "string",
-      "role": "owner"
+      "role": "owner",
+      "owned": false
     }
   ]
 }
@@ -1042,7 +1043,8 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/me' \
       "slug": "pay-the-electricity-bill",
       "colorRgb": "string",
       "icon": "string",
-      "role": "owner"
+      "role": "owner",
+      "owned": false
     }
   ]
 }
@@ -4848,6 +4850,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/tasks/:taskId' \
   "sortOrder": 1,
   "calendarMirrorEnabled": false,
   "completedAt": "2026-09-04T14:30:00.000Z",
+  "createdBy": "string",
   "revision": 1,
   "createdAt": "2026-09-04T14:30:00.000Z",
   "updatedAt": "2026-09-04T14:30:00.000Z",
@@ -4952,6 +4955,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/tasks/:taskId' \
   "sortOrder": 1,
   "calendarMirrorEnabled": false,
   "completedAt": "2026-09-04T14:30:00.000Z",
+  "createdBy": "string",
   "revision": 1,
   "createdAt": "2026-09-04T14:30:00.000Z",
   "updatedAt": "2026-09-04T14:30:00.000Z",
@@ -5183,6 +5187,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/tasks/:taskId/complete' \
   "sortOrder": 1,
   "calendarMirrorEnabled": false,
   "completedAt": "2026-09-04T14:30:00.000Z",
+  "createdBy": "string",
   "revision": 1,
   "createdAt": "2026-09-04T14:30:00.000Z",
   "updatedAt": "2026-09-04T14:30:00.000Z",
@@ -5327,6 +5332,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/tasks/:taskId/reopen' \
   "sortOrder": 1,
   "calendarMirrorEnabled": false,
   "completedAt": "2026-09-04T14:30:00.000Z",
+  "createdBy": "string",
   "revision": 1,
   "createdAt": "2026-09-04T14:30:00.000Z",
   "updatedAt": "2026-09-04T14:30:00.000Z",
@@ -5412,6 +5418,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/tasks/:taskId/snooze' \
   "sortOrder": 1,
   "calendarMirrorEnabled": false,
   "completedAt": "2026-09-04T14:30:00.000Z",
+  "createdBy": "string",
   "revision": 1,
   "createdAt": "2026-09-04T14:30:00.000Z",
   "updatedAt": "2026-09-04T14:30:00.000Z",
@@ -5496,6 +5503,7 @@ curl -X PUT 'https://api.alliswell.space/api/v1/tasks/:taskId/tags' \
   "sortOrder": 1,
   "calendarMirrorEnabled": false,
   "completedAt": "2026-09-04T14:30:00.000Z",
+  "createdBy": "string",
   "revision": 1,
   "createdAt": "2026-09-04T14:30:00.000Z",
   "updatedAt": "2026-09-04T14:30:00.000Z",
@@ -5638,6 +5646,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/tasks' \
       "sortOrder": 1,
       "calendarMirrorEnabled": false,
       "completedAt": "2026-09-04T14:30:00.000Z",
+      "createdBy": "string",
       "revision": 1,
       "createdAt": "2026-09-04T14:30:00.000Z",
       "updatedAt": "2026-09-04T14:30:00.000Z"
@@ -5732,6 +5741,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/tasks' 
   "sortOrder": 1,
   "calendarMirrorEnabled": false,
   "completedAt": "2026-09-04T14:30:00.000Z",
+  "createdBy": "string",
   "revision": 1,
   "createdAt": "2026-09-04T14:30:00.000Z",
   "updatedAt": "2026-09-04T14:30:00.000Z",

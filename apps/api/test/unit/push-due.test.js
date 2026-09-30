@@ -90,6 +90,63 @@ describe('OPH-315 — the due sweep', () => {
     });
   });
 
+  describe('who a reminder rings for, when an extension narrows it', () => {
+    const OTHER = '01HZUSEROTHERAAAAAAAAAAAAA';
+    const STRANGER = '01HZUSERSTRANGERAAAAAAAAAA';
+    const MINE = '01HZDEVMINEAAAAAAAAAAAAAAA';
+    const THEIRS = '01HZDEVTHEIRSAAAAAAAAAAAAA';
+    const OUTSIDER = '01HZDEVOUTSIDERAAAAAAAAAAA';
+
+    beforeEach(() => {
+      // A workspace two people share, and a third person outside it.
+      tables.workspace_members.push({ workspace_id: WORKSPACE, user_id: OTHER });
+      tables.reminders.push(reminder());
+      tables.notification_devices.push(device(MINE, 'web'));
+      tables.notification_devices.push(
+        device(THEIRS, 'web', { user_id: OTHER, push_endpoint: 'https://push.example/two' }),
+      );
+      tables.notification_devices.push(
+        device(OUTSIDER, 'web', { user_id: STRANGER, push_endpoint: 'https://push.example/three' }),
+      );
+    });
+
+    const sentTo = () => app.pushTransport.sends.flatMap((s) => s.deviceIds).sort();
+
+    it('with no extension, every member of the workspace — the plain build', async () => {
+      await sweepDuePushes(app, { now: NOW });
+      expect(sentTo()).toEqual([MINE, THEIRS].sort());
+    });
+
+    it('narrows to the people it names, and never reaches beyond the workspace', async () => {
+      // It names the owner AND somebody who is not a member: only the owner rings.
+      app.ee = {
+        reminderAudiences: [
+          async (_db, tasks) => new Map(tasks.map((t) => [t.id, [USER, STRANGER]])),
+        ],
+      };
+      await sweepDuePushes(app, { now: NOW });
+      expect(sentTo()).toEqual([MINE]);
+    });
+
+    it('a task it says nothing about keeps the plain audience', async () => {
+      app.ee = { reminderAudiences: [async () => new Map()] };
+      await sweepDuePushes(app, { now: NOW });
+      expect(sentTo()).toEqual([MINE, THEIRS].sort());
+    });
+
+    it('a resolver that throws narrows nothing — too many is recoverable, nobody is not', async () => {
+      app.ee = {
+        reminderAudiences: [
+          async () => {
+            throw new Error('resolver down');
+          },
+        ],
+      };
+      await sweepDuePushes(app, { now: NOW });
+      expect(sentTo()).toEqual([MINE, THEIRS].sort());
+    });
+  });
+
   it('sends once when the sweep meets the same reminder twice', async () => {
     tables.reminders.push(reminder());
     tables.notification_devices.push(device('01HZDEVWEBAAAAAAAAAAAAAAAA', 'web'));

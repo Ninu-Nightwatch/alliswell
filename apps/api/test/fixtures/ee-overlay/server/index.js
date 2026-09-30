@@ -7,6 +7,7 @@
  */
 import { recordSyncWrite } from '../../../../src/db/sync.js';
 import { newId } from '../../../../src/lib/ids.js';
+import { syncRefusal } from '../../../../src/lib/errors.js';
 
 export async function register(app, seam) {
   // Rows live per-register (= per app): two test apps must not share state.
@@ -179,6 +180,43 @@ export async function register(app, seam) {
   seam.registerAttachmentTarget('probe_target', async ({ workspaceId, targetId }) => {
     const row = probeRows.get(targetId);
     return Boolean(row) && row.workspace_id === workspaceId;
+  });
+
+  // A write observer that refuses one change from INSIDE the transaction:
+  // completing a task titled "refuse me". The status transition endpoints tell
+  // observers only the status, so the title is read back in the write's own
+  // transaction. Inert for every other task.
+  seam.registerEntityWriteObserver(async (trx, change) => {
+    if (change.entityType !== 'task' || change.operation !== 'update') return;
+    if (change.after?.status !== 'completed' || change.before?.status === 'completed') return;
+    const row = await trx('tasks').where({ id: change.entityId }).first('title');
+    if (row?.title === 'refuse me') throw syncRefusal('SEAM_REFUSED');
+  });
+
+  // …and one that refuses a DELETE: a task titled "keep me" (the row it was
+  // before the delete rides in `change.before`, so nothing is read back).
+  seam.registerEntityWriteObserver(async (trx, change) => {
+    if (change.entityType !== 'task' || change.operation !== 'delete') return;
+    if (change.before?.title === 'keep me') throw syncRefusal('SEAM_KEPT');
+  });
+
+  // A reminder audience: a task titled "only the owner" rings for the
+  // workspace's owner and for a user who is not even a member — core must
+  // drop the second, because a resolver can narrow and never widen.
+  seam.registerReminderAudience(async (db, tasks) => {
+    const titled = await db('tasks')
+      .whereIn(
+        'id',
+        tasks.map((t) => t.id),
+      )
+      .select('id', 'title', 'workspace_id');
+    const out = new Map();
+    for (const task of titled) {
+      if (task.title !== 'only the owner') continue;
+      const ws = await db('workspaces').where({ id: task.workspace_id }).first('owner_id');
+      out.set(task.id, [ws?.owner_id, '01HZNOTAMEMBERAAAAAAAAAAAA'].filter(Boolean));
+    }
+    return out;
   });
 
   // The ordering guarantee made visible: this hook is added before ANY core
