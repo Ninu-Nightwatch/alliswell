@@ -16,18 +16,18 @@ TASKS'a iş yazılmadan, id'ler yalnız commit/CHANGELOG/DEVICE-CHECKS'te.
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.14.0 canlıda** (2026-09-28, `55efb0b` + uzantı `0c1e35f`) — sunucudaki runner'dan ilk deploy (ADR-0043). Uzantının sunumu bugün; sıra uzantı deposunun `docs/DEMO.md` §A.3'ünde. |
+| Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`) — ADR-0044'ün uygulaması ve uzantının atanan-iş özelliği; uzantının CI'ı da artık sunucudaki runner'da (ADR-0043 revizyonu). |
 | Current epic             | Açık epic yok.                                                                               |
 | ➡️ **Next task**         | **BACKLOG BOŞ** — kod kuyruğu boş: TASKS'taki iki iş (OPH-142, OPH-274) ⏸️ sahibin adımını bekliyor; sıradaki adım sahibin (aşağıda). Uzantının işaretçisi kendi deposunda. |
 | Last completed           | ADR-0044 — paylaşılan alanlar birlikte senkronda, kişinin listeleri kendi işi (`owned`, `createdBy`, görev kapsamı, replika v37) ve üç dikiş eki (içeriden ret, silmenin anlatılması, hatırlatıcı kitlesi); OPH-353 liste ritmi (2026-09-30). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
-1. **Sunum (2026-09-28)** — v1.14.0 canlıda; kalan sıra uzantı deposunun `docs/DEMO.md` §A.3'ünde
+1. **Sunum** — v1.15.0 canlıda; kalan sıra uzantı deposunun `docs/DEMO.md` §A.3'ünde
    (demo tohumu → hazır olma → senaryo).
-2. **2026-10-01'den sonra (dağıtım runner'da, ADR-0043):** uzantıda `DEPLOY_OVERLAY_REF`'i sil
-   (şimdi `0c1e35f`'e sabit; silinince `main`) ve `main`'in EE CI'ını yeniden çalıştır. Bir sürüm
-   bu yoldan tam otomatik çıktıktan sonra: eski deploy anahtarı + bu depodaki `DEPLOY_SSH_*`
+2. **Dağıtım runner'da (ADR-0043):** uzantıda `DEPLOY_OVERLAY_REF` v1.15.0'ın overlay'ine (`01c2c26`)
+   sabit, `DEPLOY_NODE_PATH` sunucunun Node 18'i (kutudaki `/opt/node24` argon2'yi derleyemez). Bir sürüm
+   etiketten tam otomatik çıktıktan sonra: eski deploy anahtarı + bu depodaki `DEPLOY_SSH_*`
    secret'ları emekliye, `diagnose.yml` runner'a.
 3. **`main` için branch protection** — Settings › Branches, public depoda ücretsiz tek kural
    (2026-09-26: korumasız).
