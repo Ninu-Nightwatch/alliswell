@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../pinned.dart';
 import '../providers.dart';
 import 'quick_access_add.dart';
 import 'quick_access_list.dart';
@@ -36,6 +37,9 @@ class QuickAccessPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final rows = ref.watch(quickAccessRowsProvider).value ?? const [];
+    // EE-294 (DESIGN §23 Q10): what the app pins above the person's own
+    // shortcuts — fixed rows, not part of the order below.
+    final pinned = ref.watch(quickAccessPinsProvider).isNotEmpty;
     return SafeArea(
       top: false,
       child: Column(
@@ -67,7 +71,15 @@ class QuickAccessPanel extends ConsumerWidget {
               ],
             ),
           ),
-          if (rows.isEmpty)
+          QuickAccessPinnedRows(
+            onNavigate: () => Navigator.of(context).maybePop(),
+          ),
+          if (rows.isEmpty && pinned)
+            // A pinned entry already fills the sheet's top, so the person's
+            // own list gets the rail's one-liner rather than a monument
+            // under it (Q6).
+            const QuickAccessEmptyHint()
+          else if (rows.isEmpty)
             // The panel owns the whole sheet, so here the full empty state is
             // right — unlike the rail's one-liner (DESIGN §23 Q6).
             Padding(

@@ -630,7 +630,11 @@
     "ABSENCE_OVERLAP": "This person already has an absence on some of these days.",
     "ABSENCE_TOO_LONG": "An absence can be at most 366 days.",
     "ABSENCE_RANGE_INVALID": "The last day can’t be before the first.",
-    "ABSENCE_DATE_INVALID": "Pick a real day."
+    "ABSENCE_DATE_INVALID": "Pick a real day.",
+    "APPROVAL_NOT_YOURS": "This approval was not asked of you.",
+    "APPROVAL_ALREADY_DECIDED": "This approval has already been decided — the screen may be out of date.",
+    "APPROVAL_REASON_REQUIRED": "Write the reason — both answers need one.",
+    "SERVICE_APPROVER_CANNOT_DECIDE": "Nobody holding that role may answer approvals — give the role the approval permission or pick another one."
   },
   "sync": {
     "noteConflict": "This note was edited on another device too — open it to compare.",
@@ -2706,26 +2710,52 @@
     },
     "approvals": {
       "title": "Approvals",
-      "settingsRow": "Approvals",
-      "settingsRowHint": "What is waiting on your decision",
-      "scopeMine": "Mine",
-      "scopeTeam": "The team",
       "empty": "Nothing is waiting on you",
-      "emptyBody": "Requests and tasks that need a decision show up here, with the reason somebody asked.",
+      "emptyBody": "Requests, changes and tasks that need your decision show up here — who asked, when, and what for.",
       "approve": "Approve",
       "reject": "Reject",
       "approveTitle": "Approve this",
       "rejectTitle": "Reject this",
       "reasonLabel": "Why",
       "reasonHelp": "Both answers need one — it is what the record will say later.",
-      "dueAt": "Lapses on {date}",
       "targetGone": "What this was about is gone",
       "status": {
         "pending": "Waiting",
         "approved": "Approved",
         "rejected": "Rejected",
         "expired": "Lapsed — nobody answered in time"
-      }
+      },
+      "tabMine": "Mine",
+      "tabTeam": "Team",
+      "tabMineHint": "Asked of you by name.",
+      "tabTeamHint": "Asked of your role — anybody holding it may answer, and the first answer counts.",
+      "emptyTeam": "Nothing is waiting on your role",
+      "badge": "{count} waiting on your decision",
+      "navHint": "What is waiting on your decision",
+      "kind": {
+        "ee_ticket": "Request",
+        "ee_change": "Change",
+        "task": "Task"
+      },
+      "askedAgo": "Asked {when}",
+      "askedBy": "asked by {name}",
+      "dueShort": "decide by {date}",
+      "progress": "{approved} of {total} signed",
+      "waitingOn": "Waiting on {who}",
+      "notLiveGone": "What this was about is gone — no decision is needed",
+      "notLiveCancelled": "Cancelled — no decision is needed",
+      "via": {
+        "portal": "via the portal",
+        "email": "by e-mail",
+        "named": "filed on their behalf",
+        "system": "raised by the system"
+      },
+      "taskDue": "due {date}",
+      "settledGroup": "No longer needing a decision ({count})",
+      "othersGroup": "Waiting on others in the team",
+      "othersEmpty": "Nothing in the team is waiting on anybody else",
+      "approvedToast": "Approved",
+      "rejectedToast": "Rejected"
     },
     "assets": {
       "status": {

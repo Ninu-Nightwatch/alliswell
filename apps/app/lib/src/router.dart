@@ -54,7 +54,7 @@ import 'features/ee/ui/team_services_screen.dart';
 import 'features/ee/ui/portal_links_screen.dart';
 import 'features/ee/ui/meeting_screen.dart';
 import 'features/ee/ui/team_ai_keys_screen.dart';
-import 'features/ee/ui/team_approvals_screen.dart';
+import 'features/ee/ui/approvals_screen.dart';
 import 'features/ee/ui/team_webhooks_screen.dart';
 import 'features/ee/ui/team_identity_screen.dart';
 import 'features/ee/ui/team_mail_screen.dart';
@@ -723,9 +723,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       // tab on the queue, because the people who answer approvals are not
       // necessarily the people who work the queue — a purchasing manager has
       // no reason to open a service desk.
+      //
+      // EE-294: out of Settings and into the navigation (the rail under
+      // Requests, Quick Access on a phone). The old address still lands
+      // here — a settings URL that worked yesterday works tomorrow (DESIGN
+      // §32 S3), and it is what every notification and e-mail before this
+      // release pointed at.
+      GoRoute(
+        path: '/approvals',
+        builder: (context, state) => _page(const EeApprovalsScreen()),
+      ),
       GoRoute(
         path: '/settings/team/approvals',
-        builder: (context, state) => _page(const EeTeamApprovalsScreen()),
+        redirect: (context, state) => '/approvals',
       ),
       // EE-271: the unit's meetings — the door the route below shipped
       // without (a meeting could be read only by somebody who already had its

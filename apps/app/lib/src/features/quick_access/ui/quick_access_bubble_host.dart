@@ -8,6 +8,7 @@ import '../../../widgets/document_surface.dart';
 import '../../auth/providers.dart';
 import '../../onboarding/tour.dart';
 import '../../../notifications/alarm_overlay.dart';
+import '../pinned.dart';
 import '../providers.dart';
 import 'bubble_physics.dart';
 import 'quick_access_bubble.dart';
@@ -66,9 +67,14 @@ class _BubbleLayer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rows = ref.watch(quickAccessRowsProvider).value ?? const [];
+    // EE-294 (DESIGN §23 Q10): an entry the app pins is something to open —
+    // the Approvals door of somebody with no shortcuts of their own still
+    // needs a way in on a phone, and this button is it.
+    final pins = ref.watch(quickAccessPinsProvider);
     // Nothing to shortcut to yet: the first item is added from an entity menu
     // (DESIGN §23 Q5), and an empty button would be a dead control.
-    if (rows.isEmpty) return child;
+    if (rows.isEmpty && pins.isEmpty) return child;
+    final badge = ref.watch(quickAccessPinsBadgeProvider);
 
     final media = MediaQuery.of(context);
     final observer = ref.watch(awModalObserverProvider);
@@ -100,6 +106,11 @@ class _BubbleLayer extends ConsumerWidget {
                   viewport: media.size,
                   safeArea: media.padding,
                   keyboardInset: media.viewInsets.bottom,
+                  badge: badge,
+                  badgeSemantics: pins
+                      .where((pin) => pin.badge > 0)
+                      .map((pin) => pin.badgeSemantics ?? '${pin.badge}')
+                      .join(', '),
                   onTap: () {
                     final rootContext = awRootNavigatorKey.currentContext;
                     if (rootContext == null) return;

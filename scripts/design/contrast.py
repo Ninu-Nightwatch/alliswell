@@ -296,12 +296,27 @@ PAIRS = [
     # pair, so the number is measured here and nowhere else has to be trusted.
     ('L unread badge label', '#FFFFFF', '#D70015', 4.5),
     ('D unread badge label', '#450603', '#FF5147', 4.5),
+    # EE-294 — the same pill is now EVERY count (`AwCountBadge`): the
+    # approvals entry in the rail, its pin in the phone's Quick Access sheet,
+    # the tabs, the quick-access button. The label pair is the two rows above;
+    # these are the pill as a SHAPE on the surfaces it actually sits on (3:1).
+    ('L count badge on glass rail', '#D70015', '#D6E5FF', 3.0),
+    ('D count badge on glass rail', '#FF5147', '#111A38', 3.0),
+    ('L count badge on sheet / card', '#D70015', '#F6F9FF', 3.0),
+    ('D count badge on sheet / card', '#FF5147', '#121B36', 3.0),
+    # On the quick-access button the pill touches the dark primaryContainer
+    # (#1D4FA6), which is only 2.40:1 against the dark error fill — so the
+    # pill wears a 2 px surface-coloured ring there, and the ring is its edge.
+    ('L count badge on its ring', '#D70015', '#FFFFFF', 3.0),
+    ('D count badge on its ring', '#FF5147', '#151F3C', 3.0),
     # The unread DOT is a bare shape with no text in it, so 3:1 — the same
     # threshold the avatar ring takes, for the same reason.
     ('L unread dot on surface', '#0A5CFF', '#FFFFFF', 3.0),
     ('D unread dot on surface', '#3E9BFF', '#151F3C', 3.0),
     # The tombstone avatar: somebody who left the unit but still holds the
     # assignment. Neutral fill, so it is a plain ink-on-container pair.
+    # (EE-294: the approver's card draws the person who asked with this same
+    # neutral pair — they are usually not on the approver's roster.)
     ('L former-member avatar ink', '#44536F', '#DEE8F8', 4.5),
     ('D former-member avatar ink', '#AAB6D6', '#26345E', 4.5),
     ('L former-member avatar ring', '#63789E', '#DEE8F8', 3.0),

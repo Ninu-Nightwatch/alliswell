@@ -78,8 +78,9 @@ class NotificationItem {
     // notification — assigned, commented, status — was a line with nowhere
     // to go, although the server has always named the ticket.
     'ee_ticket' when entityId != null => '/tickets/$entityId',
-    // EE-230: an approval opens where it is answered.
-    'ee_approval' => '/settings/team/approvals',
+    // EE-230: an approval opens where it is answered — since EE-294 the
+    // navigation's own screen, not Settings.
+    'ee_approval' => '/approvals',
     _ => null,
   };
 

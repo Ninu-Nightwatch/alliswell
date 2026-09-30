@@ -952,7 +952,9 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   first touch, so it is the one place an opacity animation is correct. Its own
   colour pair (glyph on container) is contrast-checked at **full** opacity in
   `scripts/design/contrast.py`; the exception is written in the code that
-  implements it, never re-derived.
+  implements it, never re-derived. **While the button carries a count (Q10) it
+  neither recedes nor dims** — a count is text somebody is asked to read, which
+  is exactly what this exception excludes (EE-294).
 - **Q4c — The bubble is not a FAB (OPH-196).** Material's rule is one FAB per
   screen for the screen's single most important action; the quick-add FAB owns
   that slot and does not move. The bubble is a persistent *navigation* control,
@@ -996,6 +998,24 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   `quick.moveUp` / `quick.moveDown` in the row's own menu. Same rule, same reason
   as §19 D2 and the K3 board lesson; the bubble's *position* needs no such twin,
   because position is a preference and the panel is the function.
+- **Q10 — A pinned entry is the app's, not the person's (EE-294).** Some doors
+  must exist for the person without them putting them there — today the
+  Approvals entry, for anybody with approval authority, which on a phone has
+  no room in the bottom bar. Such an entry is *pinned*: it is not a
+  `quick_links` row, it does not sync, it counts against no cap, and it has no
+  menu — it cannot be renamed, moved or removed (the named exception to Q9: it
+  is not in the order). On the phone it is the first row of the panel, above a
+  divider, with a count where a shortcut has its menu; it counts as "not empty"
+  for Q5, so the button appears for somebody with no shortcuts of their own,
+  and the button (or the ⚡ fallback) wears the count. On a wide layout the same
+  door is NOT in the rail's Quick Access section: it sits in the rail directly
+  under the section it belongs to (Approvals under Requests — the first thing
+  in `NavigationRail.trailing`, never a destination, because destinations are
+  the shell's positional branch identity). Q1's "same content" holds as "the
+  same doors": the chrome decides where a pinned door sits, never whether it
+  is there. A count is `AwCountBadge` everywhere — the `error`/`onError` pair,
+  nothing at zero, "99+" beyond — and where it sits on another coloured shape
+  it wears a surface-coloured ring (§7.1).
 
 ## 24. AI surfaces: the FAB, the bubble, the confirm card (round 11 — Epic 20)
 
@@ -1439,7 +1459,7 @@ and split into sub-pages, "Entegrasyonlar" being the named example.
 | S4 | **Sign out stays on the root**, error-coloured, below the groups. | The one action people arrive stressed for does not get buried a level down. |
 | S5 | **No invented rows.** There is no theme switch today (`themeMode` is hardcoded to system — measured); regrouping must not smuggle new settings in. A group with one row is still a group. | This task's scope is architecture, not features; anything new gets its own task and its own row *inside* the structure. |
 | S6 | Group rows and sub-pages use the same 720 px constrained card layout as today, chevroned rows, `AwSpace` paddings, both themes checked. | Rule 11. |
-| S7 | **A team's rows are doors for the people who run it (EE-290).** Somebody on their own sees exactly S2's seven groups and nothing of a team's: a team-administration row (services, SLA, AI keys, identity, mail, webhooks, approvals, audit, public links) is drawn only for that team's owner or admin, on the team's own address; a member row only where the person's workspace has a team roster; the requests section only in a team's window. A group subtitle names only what its page holds. | A door is drawn on a positive answer, never on a default. `canProvider`'s "nobody is asking, so yes" is right for a button inside a team screen and was wrong on the root: on a licensed server it gave a personal account nine rows onto screens that could only answer 404, and the Notifications subtitle promised everyone a team's notification centre. |
+| S7 | **A team's rows are doors for the people who run it (EE-290).** Somebody on their own sees exactly S2's seven groups and nothing of a team's: a team-administration row (services, SLA, AI keys, identity, mail, webhooks, audit, public links) is drawn only for that team's owner or admin, on the team's own address; a member row only where the person's workspace has a team roster; the requests section only in a team's window. A group subtitle names only what its page holds. **Amended by EE-294:** Approvals was never administration — it is work somebody is asked to do, and the person asked is often not an admin (a requester's manager). It left Settings for the navigation (§23 Q10), drawn for whoever the server says has approval authority; `/settings/team/approvals` still lands on it (S3). | A door is drawn on a positive answer, never on a default. `canProvider`'s "nobody is asking, so yes" is right for a button inside a team screen and was wrong on the root: on a licensed server it gave a personal account nine rows onto screens that could only answer 404, and the Notifications subtitle promised everyone a team's notification centre. |
 
 ## 33. Picking a color, remembering five (round 18 — OPH-259)
 

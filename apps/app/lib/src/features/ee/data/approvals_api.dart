@@ -46,6 +46,20 @@ class EeApprovalsApi {
     }
   }
 
+  /// The badge and whether there is a door at all (EE-292). A 403 or 404 is
+  /// "nothing to draw" — no team on this address, or a server that predates
+  /// the door — never a red box on a navigation entry.
+  Future<EeApprovalsSummary> summary() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('$_base/summary');
+      return EeApprovalsSummary.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      if (code == 403 || code == 404) return EeApprovalsSummary.none;
+      throw asApiException(e);
+    }
+  }
+
   Future<EeApproval> decide(
     String id, {
     required bool approve,

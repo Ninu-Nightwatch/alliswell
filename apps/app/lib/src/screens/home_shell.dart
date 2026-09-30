@@ -8,6 +8,7 @@ import '../features/ee/new_ticket_providers.dart';
 import '../features/ee/providers.dart';
 import '../features/ee/team_origin.dart';
 import '../features/ee/ticket_drafts_providers.dart';
+import '../features/ee/ui/approvals_entry.dart';
 import '../features/ee/ui/team_chip.dart';
 import '../features/workspaces/ui/workspace_switcher.dart';
 import '../features/notes/ui/markdown_import_screen.dart';
@@ -337,9 +338,20 @@ class HomeShell extends ConsumerWidget {
                           // `minExtendedWidth` is only a floor, so a long
                           // shortcut title would otherwise widen the whole rail.
                           width: extendedRail ? 256 : 84,
-                          child: extendedRail
-                              ? const QuickAccessRailSection()
-                              : const QuickAccessRailButton(),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // EE-294: Approvals, directly under Requests —
+                              // the rail's last destination. A link rather
+                              // than a section (`approvals_entry.dart` says
+                              // why), drawn only for approval authority.
+                              EeApprovalsRailEntry(extended: extendedRail),
+                              extendedRail
+                                  ? const QuickAccessRailSection()
+                                  : const QuickAccessRailButton(),
+                            ],
+                          ),
                         ),
                         destinations: [
                           for (final section in visibleSections)

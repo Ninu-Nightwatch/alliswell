@@ -629,7 +629,11 @@
     "ABSENCE_OVERLAP": "Bu kişinin bu günlerin bazılarında zaten bir devamsızlığı var.",
     "ABSENCE_TOO_LONG": "Bir devamsızlık en çok 366 gün olabilir.",
     "ABSENCE_RANGE_INVALID": "Bitiş günü başlangıçtan önce olamaz.",
-    "ABSENCE_DATE_INVALID": "Gerçek bir gün seçin."
+    "ABSENCE_DATE_INVALID": "Gerçek bir gün seçin.",
+    "APPROVAL_NOT_YOURS": "Bu onay sizden istenmedi.",
+    "APPROVAL_ALREADY_DECIDED": "Bu onay zaten karara bağlandı — ekran güncel olmayabilir.",
+    "APPROVAL_REASON_REQUIRED": "Gerekçeyi yazın — iki cevap da bir gerekçe ister.",
+    "SERVICE_APPROVER_CANNOT_DECIDE": "Bu rolü taşıyanlar onay veremiyor — role onay verme yetkisi verin ya da başka bir rol seçin."
   },
   "sync": {
     "noteConflict": "Bu not başka bir cihazda da düzenlendi — karşılaştırmak için aç.",
@@ -2705,26 +2709,52 @@
     },
     "approvals": {
       "title": "Onaylar",
-      "settingsRow": "Onaylar",
-      "settingsRowHint": "Kararını bekleyenler",
-      "scopeMine": "Bende",
-      "scopeTeam": "Takımda",
       "empty": "Seni bekleyen bir şey yok",
-      "emptyBody": "Karar bekleyen talepler ve işler, istenme gerekçesiyle birlikte burada görünür.",
+      "emptyBody": "Kararınızı bekleyen talepler, değişiklikler ve işler burada görünür — kimin, ne zaman ve ne için istediğiyle.",
       "approve": "Onayla",
       "reject": "Reddet",
       "approveTitle": "Bunu onayla",
       "rejectTitle": "Bunu reddet",
       "reasonLabel": "Neden",
       "reasonHelp": "İki cevap da gerekçe ister — kayıtta sonradan okunacak olan bu.",
-      "dueAt": "{date} tarihinde düşer",
       "targetGone": "Bu kararın konusu artık yok",
       "status": {
         "pending": "Bekliyor",
         "approved": "Onaylandı",
         "rejected": "Reddedildi",
         "expired": "Düştü — kimse zamanında cevaplamadı"
-      }
+      },
+      "tabMine": "Bende",
+      "tabTeam": "Takımda",
+      "tabMineHint": "Doğrudan sizden istenenler.",
+      "tabTeamHint": "Rolünüzden istenenler — rolü taşıyan herkes karar verebilir, ilk karar geçerlidir.",
+      "emptyTeam": "Rolünüzü bekleyen bir onay yok",
+      "badge": "{count} onay kararınızı bekliyor",
+      "navHint": "Kararınızı bekleyenler",
+      "kind": {
+        "ee_ticket": "Talep",
+        "ee_change": "Değişiklik",
+        "task": "Görev"
+      },
+      "askedAgo": "Onay {when} istendi",
+      "askedBy": "isteyen: {name}",
+      "dueShort": "son gün {date}",
+      "progress": "{total} imzadan {approved} tanesi atıldı",
+      "waitingOn": "Karar: {who} bekleniyor",
+      "notLiveGone": "Bu kararın konusu artık yok — karar gerekmiyor",
+      "notLiveCancelled": "İptal edildi — karar gerekmiyor",
+      "via": {
+        "portal": "portaldan",
+        "email": "e-postayla",
+        "named": "adına açıldı",
+        "system": "sistem açtı"
+      },
+      "taskDue": "son tarih {date}",
+      "settledGroup": "Artık karar gerektirmeyenler ({count})",
+      "othersGroup": "Takımda başkasını bekleyenler",
+      "othersEmpty": "Takımda başkasını bekleyen bir onay yok",
+      "approvedToast": "Onaylandı",
+      "rejectedToast": "Reddedildi"
     },
     "assets": {
       "status": {

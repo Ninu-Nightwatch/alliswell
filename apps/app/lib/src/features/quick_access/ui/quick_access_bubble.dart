@@ -8,6 +8,7 @@ import '../../../core/kv/local_kv.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/count_badge.dart';
 import 'bubble_physics.dart';
 import 'quick_access_row.dart';
 
@@ -42,12 +43,19 @@ class QuickAccessBubble extends ConsumerStatefulWidget {
     required this.safeArea,
     required this.keyboardInset,
     required this.onTap,
+    this.badge = 0,
+    this.badgeSemantics = '',
   });
 
   final Size viewport;
   final EdgeInsets safeArea;
   final double keyboardInset;
   final VoidCallback onTap;
+
+  /// EE-294: what the pinned entries are counting (the approvals waiting on
+  /// this person). Zero draws nothing.
+  final int badge;
+  final String badgeSemantics;
 
   @override
   ConsumerState<QuickAccessBubble> createState() => _QuickAccessBubbleState();
@@ -97,7 +105,10 @@ class _QuickAccessBubbleState extends ConsumerState<QuickAccessBubble> {
         ? origin
         : centre - const Offset(kBubbleDiameter / 2, kBubbleDiameter / 2);
     final dragging = _dragCentre != null;
-    final receded = _idle && !dragging;
+    // EE-294 (DESIGN §23 Q4b): a count is text somebody is asked to read,
+    // and the 40 % dim is sanctioned only for a control that carries none —
+    // so while a count shows, the button neither recedes nor dims.
+    final receded = _idle && !dragging && widget.badge == 0;
 
     return Positioned(
       left: topLeft.dx,
@@ -140,42 +151,65 @@ class _QuickAccessBubbleState extends ConsumerState<QuickAccessBubble> {
         },
         child: Semantics(
           button: true,
-          label: 'quick.title'.tr(),
+          label: widget.badge > 0
+              ? '${'quick.title'.tr()}, ${widget.badgeSemantics}'
+              : 'quick.title'.tr(),
+          excludeSemantics: widget.badge > 0,
           child: SizedBox(
             // The BOX never moves or shrinks: 56 px stays 56 px, so the target
             // survives the idle recede (DESIGN §23 Q4a).
             width: kBubbleDiameter,
             height: kBubbleDiameter,
-            child: AnimatedSlide(
-              duration: AwMotion.base,
-              curve: AwMotion.enter,
-              offset: Offset(
-                receded
-                    ? recedePaintDx(_position.edge, 1) / kBubbleDiameter
-                    : 0,
-                0,
-              ),
-              // opacity-ok: the one sanctioned exception to §20 C3's ban on
-              // `Opacity` for calm, named in DESIGN §22 Q4b — a resting control
-              // carries no text anyone is asked to read, the first touch
-              // restores it in full, and its colour pair is contrast-checked at
-              // FULL opacity. The 40 % is the platform's own default for a
-              // receded control, not a taste call (OPH-196).
-              child: AnimatedOpacity(
-                duration: AwMotion.base,
-                opacity: receded ? kBubbleIdleOpacity : 1,
-                child: Material(
-                  elevation: dragging ? 8 : 4,
-                  color: theme.colorScheme.primaryContainer,
-                  shape: const CircleBorder(),
-                  child: Center(
-                    child: Icon(
-                      kQuickAccessIcon,
-                      color: theme.colorScheme.onPrimaryContainer,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned.fill(
+                  child: AnimatedSlide(
+                    duration: AwMotion.base,
+                    curve: AwMotion.enter,
+                    offset: Offset(
+                      receded
+                          ? recedePaintDx(_position.edge, 1) / kBubbleDiameter
+                          : 0,
+                      0,
+                    ),
+                    // opacity-ok: the one sanctioned exception to §20 C3's ban on
+                    // `Opacity` for calm, named in DESIGN §22 Q4b — a resting control
+                    // carries no text anyone is asked to read, the first touch
+                    // restores it in full, and its colour pair is contrast-checked at
+                    // FULL opacity. The 40 % is the platform's own default for a
+                    // receded control, not a taste call (OPH-196).
+                    child: AnimatedOpacity(
+                      duration: AwMotion.base,
+                      opacity: receded ? kBubbleIdleOpacity : 1,
+                      child: Material(
+                        elevation: dragging ? 8 : 4,
+                        color: theme.colorScheme.primaryContainer,
+                        shape: const CircleBorder(),
+                        child: Center(
+                          child: Icon(
+                            kQuickAccessIcon,
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+                // Painted OUTSIDE the slide and the fade, so it is never
+                // dimmed and never slides under the screen's edge.
+                if (widget.badge > 0)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: AwCountBadge(
+                      badgeKey: const Key('quick-bubble-badge'),
+                      count: widget.badge,
+                      semanticsLabel: widget.badgeSemantics,
+                      ring: true,
+                    ),
+                  ),
+              ],
             ),
           ),
         ),

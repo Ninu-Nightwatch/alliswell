@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/count_badge.dart';
+import '../pinned.dart';
 import '../providers.dart';
 import 'quick_access_add.dart';
 import 'quick_access_bubble.dart';
@@ -202,9 +204,21 @@ class QuickAccessAppBarButton extends ConsumerWidget {
     final narrow = MediaQuery.sizeOf(context).width < kAwWideBreakpoint;
     final bubbleOn = ref.watch(quickBubbleEnabledProvider);
     if (!narrow || bubbleOn) return const SizedBox.shrink();
+    // EE-294: with the bubble off, this is where the pinned entries' count
+    // shows — the approvals waiting on this person.
+    final pins = ref.watch(quickAccessPinsProvider);
+    final badge = ref.watch(quickAccessPinsBadgeProvider);
     return IconButton(
       key: const Key('quick-appbar-button'),
-      icon: const Icon(kQuickAccessIcon),
+      icon: AwBadgedIcon(
+        icon: kQuickAccessIcon,
+        count: badge,
+        badgeKey: const Key('quick-appbar-badge'),
+        semanticsLabel: pins
+            .where((pin) => pin.badge > 0)
+            .map((pin) => pin.badgeSemantics ?? '${pin.badge}')
+            .join(', '),
+      ),
       tooltip: 'quick.title'.tr(),
       onPressed: onOpen ?? () => showQuickAccessPanel(context),
     );

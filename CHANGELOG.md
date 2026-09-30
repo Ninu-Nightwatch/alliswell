@@ -7,6 +7,19 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ## [Unreleased]
 
+### Changed
+
+- **Approvals are in the navigation, with a count (EE-294).** The approvals screen left
+  Settings, where only a team's owner and admins could find it: on a wide screen it sits in
+  the rail directly under Requests, on a phone it is pinned at the top of Quick Access (it
+  cannot be edited or removed, and the floating button appears for it even with no
+  shortcuts), for anybody the server says has approval authority. A red count — what is
+  waiting on you by name plus what is waiting on your role — rides on the entry, the button
+  and each of the screen's two tabs ("Mine", "Team"); every row now says who asked, when,
+  for which service and desk, and the first lines of what they wrote. The old
+  `/settings/team/approvals` address still opens it. One count badge for the whole app
+  (`AwCountBadge`); DESIGN §23 Q10 and §32 S7 amended.
+
 ### Fixed
 
 - **After a release the web app loads the new version on the next visit (OPH-273).** The

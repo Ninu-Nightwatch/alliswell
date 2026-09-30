@@ -254,6 +254,8 @@ class EeChangeActions {
         .decide(approvalId, approve: approve, reason: reason);
     _ref.invalidate(eeChangeLiveProvider(changeId));
     _ref.invalidate(eeApprovalsProvider);
+    // EE-294: …and so is the navigation's badge.
+    _ref.invalidate(eeApprovalsSummaryProvider);
     unawaited(_ref.read(syncEngineProvider)?.syncNow());
   }
 }

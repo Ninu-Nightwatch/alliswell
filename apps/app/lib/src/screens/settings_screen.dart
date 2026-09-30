@@ -292,18 +292,10 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'ee.webhooks.settingsRowHint',
                   path: '/settings/team/webhooks',
                 ),
-              // EE-184: what is waiting on this person's decision. Gated by
-              // the verb that lets somebody BE asked — a person who cannot
-              // decide can never be named on a row, so the screen would be
-              // empty by construction.
-              if (may('approvals.decide'))
-                _GroupRow(
-                  keyName: 'settings-group-team-approvals',
-                  icon: Icons.how_to_reg_outlined,
-                  titleKey: 'ee.approvals.settingsRow',
-                  subtitleKey: 'ee.approvals.settingsRowHint',
-                  path: '/settings/team/approvals',
-                ),
+              // EE-294: Approvals left Settings for the navigation — the rail
+              // under Requests, Quick Access on a phone — and it is drawn for
+              // whoever has approval authority, not for the team's admins
+              // (`approvals_entry.dart`). It was work filed as administration.
               // EE-271: the team's audit log (EE-130), which had a screen and
               // no route. Behind the verb that reads it — the server's own
               // gate — and, like the rows above, only where teams exist.

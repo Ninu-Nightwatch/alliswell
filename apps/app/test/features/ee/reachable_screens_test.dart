@@ -53,9 +53,12 @@ const _adminRows = [
   'settings-group-team-identity',
   'settings-group-team-mail',
   'settings-group-team-webhooks',
-  'settings-group-team-approvals',
   'settings-group-team-audit',
 ];
+
+/// EE-294: Approvals is not a Settings row for anybody any more — it is in
+/// the navigation (`approvals_entry_test.dart`).
+const _gone = ['settings-group-team-approvals'];
 
 /// What anybody in a team may open: asking, being away, being told, being
 /// given work.
@@ -212,7 +215,7 @@ void main() {
       'settings-group-team-identity',
       'settings-group-team-mail',
       'settings-group-team-webhooks',
-      'settings-group-team-approvals',
+      ..._gone,
       'settings-group-team-audit',
       'settings-group-team-notifications',
       'settings-group-meetings',
@@ -295,6 +298,9 @@ void main() {
       await openSettings(tester);
       for (final row in _adminRows) {
         expect(key(row), findsOneWidget, reason: '$row for the $role');
+      }
+      for (final row in _gone) {
+        expect(key(row), findsNothing, reason: '$row lives in the navigation');
       }
     });
   }
