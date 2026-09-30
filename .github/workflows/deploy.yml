@@ -290,11 +290,22 @@ jobs:
           is_runner_node() { case "$1" in */actions-runner/*) return 0 ;; *) return 1 ;; esac; }
 
           best=""; best_major=0
-          for d in ${DEPLOY_NODE_PATH:-} \
-                   /www/server/nvm/versions/node/v*/bin \
+          # DEPLOY_NODE_PATH is the operator's CHOICE, not one more candidate:
+          # the highest Node on a box is not always one that can build its
+          # native modules. 2026-09-30: a Node 24 appeared under /opt, the
+          # search below took it, and argon2 fell back to compiling against
+          # its C++20 headers with the box's g++ 9 — `npm ci` failed after the
+          # checkout. Named, it is used as it is, or the deploy stops here.
+          if [ -n "${DEPLOY_NODE_PATH:-}" ]; then
+            [ -x "$DEPLOY_NODE_PATH/node" ] || { echo "ERROR: DEPLOY_NODE_PATH=$DEPLOY_NODE_PATH has no executable node." >&2; exit 1; }
+            best="$DEPLOY_NODE_PATH"
+            best_major=$("$best/node" -p "process.versions.node.split('.')[0]")
+          fi
+          for d in /www/server/nvm/versions/node/v*/bin \
                    /www/server/nodejs/v*/bin \
                    "${HOME:-/root}"/.nvm/versions/node/v*/bin \
                    "$(dirname "$(command -v node 2>/dev/null || echo /nonexistent/node)")"; do
+            [ -z "${DEPLOY_NODE_PATH:-}" ] || break
             [ -x "$d/node" ] || continue
             is_runner_node "$d" && continue
             m=$("$d/node" -p "process.versions.node.split('.')[0]" 2>/dev/null || echo 0)
@@ -303,7 +314,7 @@ jobs:
           # Still nothing new enough? Stop guessing at layouts and go find every
           # node on the box — panels move these between versions, and a deploy
           # should not break because a directory was renamed upstream.
-          if [ "$best_major" -lt 22 ]; then
+          if [ -z "${DEPLOY_NODE_PATH:-}" ] && [ "$best_major" -lt 22 ]; then
             for cand in $(find /www/server /opt /usr/local /home -maxdepth 6 -type f -name node -perm -u+x 2>/dev/null | head -40); do
               is_runner_node "$cand" && continue
               m=$("$cand" -p "process.versions.node.split('.')[0]" 2>/dev/null || echo 0)
