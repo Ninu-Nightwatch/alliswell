@@ -28,6 +28,11 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **Every list keeps the same gap between its rows (OPH-353).** Card rows stacked with no space
+  of their own sat border on border — the request queue among them — because a card's own
+  margin is zero on purpose. One constant now spaces every card row 6 px apart (DESIGN §4), and
+  the few lists that drew full-width rows or divider lines instead use the same card rows.
+
 - **After a release the web app loads the new version on the next visit (OPH-273).** The
   edge in front of the site kept the app's code for four hours whatever the server said, so a
   browser that had opened the app shortly before a release went on running the old one —

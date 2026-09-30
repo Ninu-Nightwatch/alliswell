@@ -185,6 +185,7 @@ class _EeAssetsScreenState extends ConsumerState<EeAssetsScreen> {
     final heading = elsewhere.isEmpty ? 0 : 1;
     final note = offline ? 1 : 0;
     return ListView.builder(
+      padding: awListPadding(context),
       itemCount: here.length + heading + elsewhere.length + note,
       itemBuilder: (context, index) {
         var i = index;
@@ -510,32 +511,37 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final retired = asset.status == 'retired';
-    return ListTile(
-      key: Key('asset-${asset.id}'),
-      leading: Icon(
-        fromServer
-            ? Icons.cloud_outlined
-            : Icons.precision_manufacturing_outlined,
-      ),
-      // Tag first — it is painted on the machine, and it is what somebody
-      // reads out on the phone.
-      title: Text(
-        '${asset.tag} · ${asset.name}',
-        style: retired
-            ? theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              )
-            : null,
-      ),
-      subtitle: Text(
-        [
-          'ee.assets.status.${asset.status}'.tr(),
-          if (asset.location != null) asset.location!,
-        ].join(' · '),
-      ),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => EeAssetDetailScreen(assetId: asset.id),
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        child: ListTile(
+          key: Key('asset-${asset.id}'),
+          leading: Icon(
+            fromServer
+                ? Icons.cloud_outlined
+                : Icons.precision_manufacturing_outlined,
+          ),
+          // Tag first — it is painted on the machine, and it is what somebody
+          // reads out on the phone.
+          title: Text(
+            '${asset.tag} · ${asset.name}',
+            style: retired
+                ? theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  )
+                : null,
+          ),
+          subtitle: Text(
+            [
+              'ee.assets.status.${asset.status}'.tr(),
+              if (asset.location != null) asset.location!,
+            ].join(' · '),
+          ),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => EeAssetDetailScreen(assetId: asset.id),
+            ),
+          ),
         ),
       ),
     );

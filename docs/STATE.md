@@ -9,9 +9,8 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-09-26 — açık GitHub issue'larının kod turu: #17 ve #19 düzeltilip kapandı, #11
-kod tamam diye kapandı (Play beyanı sahip adımı); TASKS'a iş yazılmadan, id'ler yalnız
-commit/CHANGELOG/DEVICE-CHECKS'te.
+**Last updated:** 2026-09-30 — sahibin raporundan kod turu (liste aralığı ve uzantının iş modeli);
+TASKS'a iş yazılmadan, id'ler yalnız commit/CHANGELOG/DEVICE-CHECKS'te.
 
 ## Snapshot
 
@@ -20,7 +19,7 @@ commit/CHANGELOG/DEVICE-CHECKS'te.
 | Current phase            | **v1.14.0 canlıda** (2026-09-28, `55efb0b` + uzantı `0c1e35f`) — sunucudaki runner'dan ilk deploy (ADR-0043). Uzantının sunumu bugün; sıra uzantı deposunun `docs/DEMO.md` §A.3'ünde. |
 | Current epic             | Açık epic yok.                                                                               |
 | ➡️ **Next task**         | **BACKLOG BOŞ** — kod kuyruğu boş: TASKS'taki iki iş (OPH-142, OPH-274) ⏸️ sahibin adımını bekliyor; sıradaki adım sahibin (aşağıda). Uzantının işaretçisi kendi deposunda. |
-| Last completed           | OPH-352 — web'de alarm düzeltme sayfası ölü `app-settings:` sekmesi açmıyor; tarayıcının üç ret durumu ayrı (GitHub #19). |
+| Last completed           | OPH-353 — her liste satırları arasında aynı 6 px'i tutuyor (`kAwListRowPadding`); yapışık ve çizgili listeler kart satırında (sahibin raporu, 2026-09-30). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

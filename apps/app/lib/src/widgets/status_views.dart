@@ -216,6 +216,16 @@ class AwInlineError extends StatelessWidget {
   }
 }
 
+/// The space around ONE card row of a list — DESIGN §4's 6 px rhythm, paid as 3 px
+/// above and 3 px below every row so two neighbours never touch.
+///
+/// The theme's `CardThemeData.margin` is zero on purpose (a card inside a form or a
+/// sheet sits where its parent puts it), so a list that stacks bare `Card`s draws
+/// them border on border. Every card row wraps itself in this rather than choosing a
+/// number: a list at 8 px beside one at 6 px beside one at 0 px is how the queue
+/// ended up with none.
+const EdgeInsets kAwListRowPadding = EdgeInsets.symmetric(vertical: 3);
+
 /// List padding that clears the glass bottom bar / FAB on every platform.
 EdgeInsets awListPadding(
   BuildContext context, {

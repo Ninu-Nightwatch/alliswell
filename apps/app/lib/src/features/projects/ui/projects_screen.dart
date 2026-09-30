@@ -140,7 +140,7 @@ class _ProjectTile extends ConsumerWidget {
     final tokens = context.awTokens;
     final archived = project.status == 'archived';
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: kAwListRowPadding,
       // OPH-184: a project could only be deleted from inside its detail screen.
       // A project delete CASCADES, so it keeps its confirmation dialog and does
       // NOT use the undo path (DESIGN §19 D3) — the swipe is a shortcut to that

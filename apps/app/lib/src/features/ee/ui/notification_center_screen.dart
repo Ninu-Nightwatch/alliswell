@@ -80,10 +80,9 @@ class EeNotificationCenterScreen extends ConsumerWidget {
               message: 'ee.notif.emptyBody'.tr(),
             );
           }
-          return ListView.separated(
+          return ListView.builder(
             padding: awListPadding(context),
             itemCount: rows.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (context, index) =>
                 _NotificationTile(item: rows[index]),
           );
@@ -109,28 +108,36 @@ class _NotificationTile extends ConsumerWidget {
     final body = item.bodyKey?.tr(args: args);
     final destination = item.destination;
 
-    return ListTile(
-      key: Key('notif-${item.id}'),
-      leading: _UnreadDot(unread: item.isUnread),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontWeight: item.isUnread ? FontWeight.w600 : FontWeight.w400,
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        child: ListTile(
+          key: Key('notif-${item.id}'),
+          leading: _UnreadDot(unread: item.isUnread),
+          title: Text(
+            title,
+            style: TextStyle(
+              fontWeight: item.isUnread ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+          subtitle: body == null || body.isEmpty
+              ? null
+              : Text(body, maxLines: 2, overflow: TextOverflow.ellipsis),
+          trailing: item.createdAt == null
+              ? null
+              : Text(
+                  _shortWhen(item.createdAt!),
+                  style: theme.textTheme.bodySmall,
+                ),
+          onTap: () async {
+            // Reading it is the act of opening it — marking read separately would
+            // be a second tap for something the first tap already meant.
+            await ref.read(notificationStoreProvider).markRead(item.id);
+            if (!context.mounted || destination == null) return;
+            context.push(destination);
+          },
         ),
       ),
-      subtitle: body == null || body.isEmpty
-          ? null
-          : Text(body, maxLines: 2, overflow: TextOverflow.ellipsis),
-      trailing: item.createdAt == null
-          ? null
-          : Text(_shortWhen(item.createdAt!), style: theme.textTheme.bodySmall),
-      onTap: () async {
-        // Reading it is the act of opening it — marking read separately would
-        // be a second tap for something the first tap already meant.
-        await ref.read(notificationStoreProvider).markRead(item.id);
-        if (!context.mounted || destination == null) return;
-        context.push(destination);
-      },
     );
   }
 

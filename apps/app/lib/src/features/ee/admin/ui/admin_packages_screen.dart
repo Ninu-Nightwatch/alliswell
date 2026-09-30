@@ -47,7 +47,7 @@ class AdminPackagesScreen extends ConsumerWidget {
       children: [
         for (final row in rows)
           Card(
-            margin: const EdgeInsets.only(bottom: AwSpace.x3),
+            margin: kAwListRowPadding,
             child: ExpansionTile(
               title: Row(
                 children: [

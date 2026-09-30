@@ -307,7 +307,7 @@ class _Requests extends StatelessWidget {
             for (final ticket in list.tickets)
               Card(
                 key: Key('problem-request-${ticket.id}'),
-                margin: const EdgeInsets.only(bottom: AwSpace.x2),
+                margin: kAwListRowPadding,
                 clipBehavior: Clip.antiAlias,
                 child: ListTile(
                   leading: const Icon(Icons.support_agent),

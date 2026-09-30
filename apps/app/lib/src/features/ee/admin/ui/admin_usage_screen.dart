@@ -46,7 +46,7 @@ class AdminUsageScreen extends ConsumerWidget {
             else
               for (final row in _byPressure(report.rows))
                 Card(
-                  margin: const EdgeInsets.only(bottom: AwSpace.x2),
+                  margin: kAwListRowPadding,
                   child: ListTile(
                     onTap: () => context.go('/admin/teams/${row.id}'),
                     title: Text(row.name),

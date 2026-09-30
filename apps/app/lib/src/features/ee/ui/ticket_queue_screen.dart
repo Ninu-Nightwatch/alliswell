@@ -614,70 +614,76 @@ class _TicketCard extends ConsumerWidget {
         : ref.watch(
             eeMemberNamesProvider.select((names) => names.value?[requesterId]),
           );
-    return Card(
-      key: Key('ticket-${ticket.id}'),
-      child: ListTile(
-        // While selecting, the box takes the dot's place: the priority is
-        // still a WORD on the status line below, so nothing is lost.
-        leading: selecting
-            ? Checkbox(
-                key: Key('ticket-select-${ticket.id}'),
-                value: selected,
-                onChanged: (_) => toggle(),
-              )
-            : _PriorityMark(priority: ticket.priority, muted: finished),
-        title: Text(
-          // EE-167: the number leads, because it is what the person on the
-          // phone says. Nullable while a request pulled before the numbering
-          // has not been touched again — a bare subject is the honest shape
-          // then, not a `#null`.
-          ticket.number == null
-              ? ticket.subject
-              : '#${ticket.number} · ${ticket.subject}',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: finished
-              // Muted, never struck through: the work happened, it is simply
-              // not waiting for anybody (the units screen settled this shape).
-              ? theme.textTheme.titleMedium?.copyWith(
-                  color: theme.disabledColor,
+    // DESIGN §4's rhythm: without it the cards sat border on border (the
+    // theme's card margin is zero on purpose). The key stays on the CARD, so
+    // what a test measures is the card, not the space around it.
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        key: Key('ticket-${ticket.id}'),
+        child: ListTile(
+          // While selecting, the box takes the dot's place: the priority is
+          // still a WORD on the status line below, so nothing is lost.
+          leading: selecting
+              ? Checkbox(
+                  key: Key('ticket-select-${ticket.id}'),
+                  value: selected,
+                  onChanged: (_) => toggle(),
                 )
-              : null,
+              : _PriorityMark(priority: ticket.priority, muted: finished),
+          title: Text(
+            // EE-167: the number leads, because it is what the person on the
+            // phone says. Nullable while a request pulled before the numbering
+            // has not been touched again — a bare subject is the honest shape
+            // then, not a `#null`.
+            ticket.number == null
+                ? ticket.subject
+                : '#${ticket.number} · ${ticket.subject}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: finished
+                // Muted, never struck through: the work happened, it is simply
+                // not waiting for anybody (the units screen settled this shape).
+                ? theme.textTheme.titleMedium?.copyWith(
+                    color: theme.disabledColor,
+                  )
+                : null,
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // EE-097: the due chip sits with the status line rather than on a
+              // row of its own — a queue is scanned vertically, and a fourth
+              // line per card would cost the screen about three tickets.
+              // `Wrap` because Turkish labels are longer and a narrow phone must
+              // fold rather than clip.
+              Wrap(
+                spacing: 8,
+                runSpacing: 2,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    [
+                      'ee.tickets.status.${ticket.status}'.tr(),
+                      'ee.tickets.priority.${ticket.priority}'.tr(),
+                      // Last, so on a narrow phone it is the name that folds
+                      // to the next line, never the status.
+                      ?askedBy,
+                    ].join(' · '),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  AwSlaChip(ticket: ticket, muted: finished),
+                ],
+              ),
+              // Item 9's avatars, on the ticket card. Empty when nobody is on it
+              // — the widget draws nothing rather than a placeholder, because
+              // "unassigned" is a real and common state of a queue.
+              AwAssigneeStrip(assignees: assignees),
+            ],
+          ),
+          onTap: selecting ? toggle : () => awOpenTicket(context, ticket.id),
+          onLongPress: toggle,
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // EE-097: the due chip sits with the status line rather than on a
-            // row of its own — a queue is scanned vertically, and a fourth
-            // line per card would cost the screen about three tickets.
-            // `Wrap` because Turkish labels are longer and a narrow phone must
-            // fold rather than clip.
-            Wrap(
-              spacing: 8,
-              runSpacing: 2,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  [
-                    'ee.tickets.status.${ticket.status}'.tr(),
-                    'ee.tickets.priority.${ticket.priority}'.tr(),
-                    // Last, so on a narrow phone it is the name that folds
-                    // to the next line, never the status.
-                    ?askedBy,
-                  ].join(' · '),
-                  style: theme.textTheme.bodySmall,
-                ),
-                AwSlaChip(ticket: ticket, muted: finished),
-              ],
-            ),
-            // Item 9's avatars, on the ticket card. Empty when nobody is on it
-            // — the widget draws nothing rather than a placeholder, because
-            // "unassigned" is a real and common state of a queue.
-            AwAssigneeStrip(assignees: assignees),
-          ],
-        ),
-        onTap: selecting ? toggle : () => awOpenTicket(context, ticket.id),
-        onLongPress: toggle,
       ),
     );
   }

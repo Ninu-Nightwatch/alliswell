@@ -127,7 +127,7 @@ class EeMeetingRow extends StatelessWidget {
     final when = awRelativePast(meeting.createdAt, DateTime.now());
     return Card(
       key: Key('meeting-${meeting.id}'),
-      margin: const EdgeInsets.only(bottom: AwSpace.x2),
+      margin: kAwListRowPadding,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => awOpenMeeting(context, meeting.id),

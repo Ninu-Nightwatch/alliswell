@@ -106,7 +106,7 @@ class ShareLogScreen extends ConsumerWidget {
               else
                 for (final row in rows)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    padding: kAwListRowPadding,
                     child: Card(
                       child: ListTile(
                         dense: true,

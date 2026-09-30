@@ -16,6 +16,7 @@ import '../data/task.dart';
 import '../providers.dart';
 import 'repeat_row.dart';
 import 'task_visuals.dart';
+import '../../../widgets/status_views.dart';
 
 /// The row form of the user's chosen format (OPH-174, DESIGN §17 D4): short
 /// date + time, no year — "Jul 15, 09:30" in English, "15 Tem 09:30" in Turkish,
@@ -387,10 +388,7 @@ class TaskTile extends ConsumerWidget {
     // No `Opacity` here any more (DESIGN §20 C3): recession is the card's
     // colour, decided above, so the text keeps its full-strength token and
     // `contrast.py` can see the pair.
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: swipeable,
-    );
+    return Padding(padding: kAwListRowPadding, child: swipeable);
   }
 }
 

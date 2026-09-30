@@ -236,7 +236,8 @@ class _CatalogueTree extends StatelessWidget {
       key: key,
       padding: EdgeInsetsDirectional.only(
         start: indent ? AwSpace.x6 : 0,
-        bottom: AwSpace.x2,
+        top: kAwListRowPadding.top,
+        bottom: kAwListRowPadding.bottom,
       ),
       child: Text(text, style: theme.textTheme.bodySmall),
     );
@@ -375,7 +376,8 @@ class _ServiceCard extends ConsumerWidget {
       key: Key('service-${service.id}'),
       margin: EdgeInsetsDirectional.only(
         start: indent ? AwSpace.x6 : 0,
-        bottom: AwSpace.x2,
+        top: kAwListRowPadding.top,
+        bottom: kAwListRowPadding.bottom,
       ),
       child: ListTile(
         leading: Icon(

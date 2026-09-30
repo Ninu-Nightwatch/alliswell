@@ -213,7 +213,7 @@ class _LeadRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Card(
-      margin: const EdgeInsets.only(bottom: AwSpace.x2),
+      margin: kAwListRowPadding,
       child: ListTile(
         key: Key('admin-lead-${lead.id}'),
         // An erased row keeps its place in the list. Removing it would make

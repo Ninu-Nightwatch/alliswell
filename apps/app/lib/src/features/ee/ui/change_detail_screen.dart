@@ -422,7 +422,7 @@ class _ConflictLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      margin: const EdgeInsets.only(bottom: AwSpace.x2),
+      margin: kAwListRowPadding,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,

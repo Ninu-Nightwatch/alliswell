@@ -141,60 +141,65 @@ class _UnitCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    return Card(
-      key: Key('unit-${unit.id}'),
-      child: ListTile(
-        leading: Icon(
-          unit.archived ? Icons.inventory_2_outlined : Icons.apartment_outlined,
-          // An archived unit reads as retired, not as broken: the row is
-          // muted, never struck through or coloured like an error.
-          color: unit.archived ? theme.disabledColor : null,
-        ),
-        title: Text(unit.name),
-        subtitle: Text(
-          [
-            'ee.team.units.memberCount'.tr(
-              args: {'count': '${unit.memberCount}'},
-            ),
-            if (unit.archived) 'ee.team.units.archived'.tr(),
-            // Only ever shown to somebody who IS the delegate — an admin sees
-            // no badge, because "I run this one" is not true of them.
-            if (unit.manages) 'ee.team.units.youManage'.tr(),
-          ].join(' · '),
-          style: theme.textTheme.bodySmall,
-        ),
-        trailing: mayShape
-            ? PopupMenuButton<String>(
-                key: Key('unit-menu-${unit.id}'),
-                onSelected: (value) async {
-                  switch (value) {
-                    case 'rename':
-                      await EeTeamUnitsScreen._rename(context, ref, unit);
-                    case 'archive':
-                      await ref
-                          .read(eeUnitsProvider.notifier)
-                          .setArchived(unit.id, archived: !unit.archived);
-                  }
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'rename',
-                    child: Text('ee.team.units.rename'.tr()),
-                  ),
-                  PopupMenuItem(
-                    value: 'archive',
-                    child: Text(
-                      unit.archived
-                          ? 'ee.team.units.unarchive'.tr()
-                          : 'ee.team.units.archive'.tr(),
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        key: Key('unit-${unit.id}'),
+        child: ListTile(
+          leading: Icon(
+            unit.archived
+                ? Icons.inventory_2_outlined
+                : Icons.apartment_outlined,
+            // An archived unit reads as retired, not as broken: the row is
+            // muted, never struck through or coloured like an error.
+            color: unit.archived ? theme.disabledColor : null,
+          ),
+          title: Text(unit.name),
+          subtitle: Text(
+            [
+              'ee.team.units.memberCount'.tr(
+                args: {'count': '${unit.memberCount}'},
+              ),
+              if (unit.archived) 'ee.team.units.archived'.tr(),
+              // Only ever shown to somebody who IS the delegate — an admin sees
+              // no badge, because "I run this one" is not true of them.
+              if (unit.manages) 'ee.team.units.youManage'.tr(),
+            ].join(' · '),
+            style: theme.textTheme.bodySmall,
+          ),
+          trailing: mayShape
+              ? PopupMenuButton<String>(
+                  key: Key('unit-menu-${unit.id}'),
+                  onSelected: (value) async {
+                    switch (value) {
+                      case 'rename':
+                        await EeTeamUnitsScreen._rename(context, ref, unit);
+                      case 'archive':
+                        await ref
+                            .read(eeUnitsProvider.notifier)
+                            .setArchived(unit.id, archived: !unit.archived);
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'rename',
+                      child: Text('ee.team.units.rename'.tr()),
                     ),
-                  ),
-                ],
-              )
-            : const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => EeUnitMembersScreen(unit: unit),
+                    PopupMenuItem(
+                      value: 'archive',
+                      child: Text(
+                        unit.archived
+                            ? 'ee.team.units.unarchive'.tr()
+                            : 'ee.team.units.archive'.tr(),
+                      ),
+                    ),
+                  ],
+                )
+              : const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => EeUnitMembersScreen(unit: unit),
+            ),
           ),
         ),
       ),
@@ -233,48 +238,51 @@ class EeUnitMembersScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(AwSpace.x4),
           children: [
             for (final member in list)
-              Card(
-                key: Key('unit-member-${member.userId}'),
-                child: ListTile(
-                  leading: Icon(
-                    member.isManager
-                        ? Icons.manage_accounts_outlined
-                        : Icons.person_outline,
-                  ),
-                  title: Text(member.label),
-                  subtitle: member.isManager
-                      ? Text('ee.team.units.manager'.tr())
-                      : null,
-                  trailing: PopupMenuButton<String>(
-                    key: Key('unit-member-menu-${member.userId}'),
-                    onSelected: (value) async {
-                      switch (value) {
-                        case 'promote':
-                          await actions.setRole(member.userId, 'manager');
-                        case 'demote':
-                          await actions.setRole(member.userId, 'member');
-                        case 'remove':
-                          await actions.remove(member.userId);
-                      }
-                    },
-                    itemBuilder: (_) => [
-                      // Appointing a manager is TEAM authority: a delegated
-                      // manager cannot grow their own delegation, so the
-                      // control is absent rather than refused.
-                      if (mayAppoint)
-                        PopupMenuItem(
-                          value: member.isManager ? 'demote' : 'promote',
-                          child: Text(
-                            member.isManager
-                                ? 'ee.team.units.demote'.tr()
-                                : 'ee.team.units.promote'.tr(),
+              Padding(
+                padding: kAwListRowPadding,
+                child: Card(
+                  key: Key('unit-member-${member.userId}'),
+                  child: ListTile(
+                    leading: Icon(
+                      member.isManager
+                          ? Icons.manage_accounts_outlined
+                          : Icons.person_outline,
+                    ),
+                    title: Text(member.label),
+                    subtitle: member.isManager
+                        ? Text('ee.team.units.manager'.tr())
+                        : null,
+                    trailing: PopupMenuButton<String>(
+                      key: Key('unit-member-menu-${member.userId}'),
+                      onSelected: (value) async {
+                        switch (value) {
+                          case 'promote':
+                            await actions.setRole(member.userId, 'manager');
+                          case 'demote':
+                            await actions.setRole(member.userId, 'member');
+                          case 'remove':
+                            await actions.remove(member.userId);
+                        }
+                      },
+                      itemBuilder: (_) => [
+                        // Appointing a manager is TEAM authority: a delegated
+                        // manager cannot grow their own delegation, so the
+                        // control is absent rather than refused.
+                        if (mayAppoint)
+                          PopupMenuItem(
+                            value: member.isManager ? 'demote' : 'promote',
+                            child: Text(
+                              member.isManager
+                                  ? 'ee.team.units.demote'.tr()
+                                  : 'ee.team.units.promote'.tr(),
+                            ),
                           ),
+                        PopupMenuItem(
+                          value: 'remove',
+                          child: Text('ee.team.units.removeMember'.tr()),
                         ),
-                      PopupMenuItem(
-                        value: 'remove',
-                        child: Text('ee.team.units.removeMember'.tr()),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

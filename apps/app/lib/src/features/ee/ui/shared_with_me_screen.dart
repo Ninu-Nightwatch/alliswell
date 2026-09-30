@@ -69,29 +69,32 @@ class _SharedRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      key: Key('shared-${item.id}'),
-      child: ListTile(
-        leading: Icon(_icons[item.entityType] ?? Icons.link),
-        // `?? ` is not enough: a source with an empty title yields '', which
-        // renders a row with no label rather than a row that says it has none.
-        title: Text(
-          (item.title ?? '').trim().isEmpty
-              ? 'ee.shared.untitled'.tr()
-              : item.title!,
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        key: Key('shared-${item.id}'),
+        child: ListTile(
+          leading: Icon(_icons[item.entityType] ?? Icons.link),
+          // `?? ` is not enough: a source with an empty title yields '', which
+          // renders a row with no label rather than a row that says it has none.
+          title: Text(
+            (item.title ?? '').trim().isEmpty
+                ? 'ee.shared.untitled'.tr()
+                : item.title!,
+          ),
+          subtitle: Text(
+            [
+              'ee.shared.kind.${item.entityType}'.tr(),
+              item.rights == 'edit'
+                  ? 'ee.shared.canEdit'.tr()
+                  : 'ee.shared.readOnly'.tr(),
+            ].join(' · '),
+            style: theme.textTheme.bodySmall,
+          ),
+          // No chevron: opening a reference into another unit's workspace is
+          // EE-063's surface. A row that looks tappable and is not would be a
+          // worse promise than a row that plainly is not (DESIGN §22).
         ),
-        subtitle: Text(
-          [
-            'ee.shared.kind.${item.entityType}'.tr(),
-            item.rights == 'edit'
-                ? 'ee.shared.canEdit'.tr()
-                : 'ee.shared.readOnly'.tr(),
-          ].join(' · '),
-          style: theme.textTheme.bodySmall,
-        ),
-        // No chevron: opening a reference into another unit's workspace is
-        // EE-063's surface. A row that looks tappable and is not would be a
-        // worse promise than a row that plainly is not (DESIGN §22).
       ),
     );
   }

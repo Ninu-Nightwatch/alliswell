@@ -1030,54 +1030,57 @@ class _CommentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      key: Key('ticket-comment-${comment.id}'),
-      // The tint is the first of the three signals; the icon and the word
-      // below are the other two. One of them is enough for anybody, and
-      // together they are enough for everybody. `surfaceContainerHighest` is
-      // the theme's own "this is set apart" surface — a hand-mixed amber would
-      // be a colour the contrast gate has never measured.
-      color: comment.internal
-          ? theme.colorScheme.surfaceContainerHighest
-          : null,
-      child: Padding(
-        padding: const EdgeInsets.all(AwSpace.x4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (comment.internal)
-              Row(
-                children: [
-                  const Icon(Icons.lock_outline, size: 16),
-                  const SizedBox(width: AwSpace.x1),
-                  // Wraps rather than running off the card on a phone — the
-                  // English label is 45 characters (found by EE-266's archive
-                  // twin of this card).
-                  Expanded(
-                    child: Text(
-                      'ee.tickets.internalNote'.tr(),
-                      style: theme.textTheme.labelMedium,
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        key: Key('ticket-comment-${comment.id}'),
+        // The tint is the first of the three signals; the icon and the word
+        // below are the other two. One of them is enough for anybody, and
+        // together they are enough for everybody. `surfaceContainerHighest` is
+        // the theme's own "this is set apart" surface — a hand-mixed amber would
+        // be a colour the contrast gate has never measured.
+        color: comment.internal
+            ? theme.colorScheme.surfaceContainerHighest
+            : null,
+        child: Padding(
+          padding: const EdgeInsets.all(AwSpace.x4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (comment.internal)
+                Row(
+                  children: [
+                    const Icon(Icons.lock_outline, size: 16),
+                    const SizedBox(width: AwSpace.x1),
+                    // Wraps rather than running off the card on a phone — the
+                    // English label is 45 characters (found by EE-266's archive
+                    // twin of this card).
+                    Expanded(
+                      child: Text(
+                        'ee.tickets.internalNote'.tr(),
+                        style: theme.textTheme.labelMedium,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            if (comment.internal) const SizedBox(height: AwSpace.x2),
-            if (unverified) ...[
-              _Unverified(
-                key: Key('ticket-comment-unverified-${comment.id}'),
-                text: 'ee.tickets.senderUnverifiedShort'.tr(),
-              ),
-              const SizedBox(height: AwSpace.x2),
+                  ],
+                ),
+              if (comment.internal) const SizedBox(height: AwSpace.x2),
+              if (unverified) ...[
+                _Unverified(
+                  key: Key('ticket-comment-unverified-${comment.id}'),
+                  text: 'ee.tickets.senderUnverifiedShort'.tr(),
+                ),
+                const SizedBox(height: AwSpace.x2),
+              ],
+              Text(comment.body, style: theme.textTheme.bodyMedium),
+              if (comment.createdAt != null) ...[
+                const SizedBox(height: AwSpace.x1),
+                Text(
+                  awFormatDateTime(comment.createdAt!, format: dateFormat),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
             ],
-            Text(comment.body, style: theme.textTheme.bodyMedium),
-            if (comment.createdAt != null) ...[
-              const SizedBox(height: AwSpace.x1),
-              Text(
-                awFormatDateTime(comment.createdAt!, format: dateFormat),
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );

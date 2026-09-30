@@ -64,7 +64,7 @@ class AdminTeamsScreen extends ConsumerWidget {
                 itemBuilder: (context, i) {
                   final team = rows[i];
                   return Card(
-                    margin: const EdgeInsets.only(bottom: AwSpace.x2),
+                    margin: kAwListRowPadding,
                     child: ListTile(
                       onTap: () => context.go('/admin/teams/${team.id}'),
                       title: Text(team.name),

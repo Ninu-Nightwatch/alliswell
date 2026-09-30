@@ -246,44 +246,47 @@ class _RowCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final label = this.label ?? row.label ?? fallbackLabel;
-    return Card(
-      key: Key('perf-row-${row.key ?? 'none'}'),
-      child: Padding(
-        padding: const EdgeInsets.all(AwSpace.x4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: theme.textTheme.titleSmall),
-            const SizedBox(height: AwSpace.x2),
-            Wrap(
-              spacing: AwSpace.x4,
-              runSpacing: AwSpace.x2,
-              children: [
-                _Figure(
-                  labelKey: 'ee.perfPanel.opened',
-                  value: '${row.opened}',
-                ),
-                _Figure(
-                  labelKey: 'ee.perfPanel.resolved',
-                  value: '${row.resolved}',
-                ),
-                _Figure(labelKey: 'ee.perfPanel.mtta', value: _avg(row.mtta)),
-                _Figure(labelKey: 'ee.perfPanel.mttr', value: _avg(row.mttr)),
-                if (showCsat)
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        key: Key('perf-row-${row.key ?? 'none'}'),
+        child: Padding(
+          padding: const EdgeInsets.all(AwSpace.x4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: theme.textTheme.titleSmall),
+              const SizedBox(height: AwSpace.x2),
+              Wrap(
+                spacing: AwSpace.x4,
+                runSpacing: AwSpace.x2,
+                children: [
                   _Figure(
-                    labelKey: 'ee.perfPanel.csat',
-                    value: _csat(row.csat),
+                    labelKey: 'ee.perfPanel.opened',
+                    value: '${row.opened}',
                   ),
-                if (row.compliance != null)
                   _Figure(
-                    labelKey: 'ee.perfPanel.compliance',
-                    value: 'ee.perfPanel.percent'.tr(
-                      args: {'value': row.compliance!.toStringAsFixed(1)},
+                    labelKey: 'ee.perfPanel.resolved',
+                    value: '${row.resolved}',
+                  ),
+                  _Figure(labelKey: 'ee.perfPanel.mtta', value: _avg(row.mtta)),
+                  _Figure(labelKey: 'ee.perfPanel.mttr', value: _avg(row.mttr)),
+                  if (showCsat)
+                    _Figure(
+                      labelKey: 'ee.perfPanel.csat',
+                      value: _csat(row.csat),
                     ),
-                  ),
-              ],
-            ),
-          ],
+                  if (row.compliance != null)
+                    _Figure(
+                      labelKey: 'ee.perfPanel.compliance',
+                      value: 'ee.perfPanel.percent'.tr(
+                        args: {'value': row.compliance!.toStringAsFixed(1)},
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

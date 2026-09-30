@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Liste ritmi (2026-09-30)
+
+- OPH-353 — açık ve koyu temada talep kuyruğu, Taleplerim, Bilgi bankası, Varlıklar, bildirim merkezi, denetim günlüğü ve dosyalar: kartlar arası eşit boşluk, hiçbir liste çizgiyle ayrılmıyor.
+
 ## GitHub issue'ları (2026-09-26)
 
 - OPH-351 (#17) — Android'de hızlı erişim balonunu hızlı ve uzun sürükle: parmağın altında kalıyor, bıraktığın yarının kenarına yapışıyor.

@@ -121,19 +121,22 @@ class _VersionList extends ConsumerWidget {
         );
       }
       children.add(
-        Card(
-          child: ListTile(
-            key: Key('version-${version.id}'),
-            title: Text(
-              awFormatTime(version.createdAt, format: dateFormat),
-              style: theme.textTheme.titleSmall,
-            ),
-            subtitle: Text(originLabel(version, myClientId: myClientId)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) =>
-                    NoteVersionPreview(noteId: noteId, version: version),
+        Padding(
+          padding: kAwListRowPadding,
+          child: Card(
+            child: ListTile(
+              key: Key('version-${version.id}'),
+              title: Text(
+                awFormatTime(version.createdAt, format: dateFormat),
+                style: theme.textTheme.titleSmall,
+              ),
+              subtitle: Text(originLabel(version, myClientId: myClientId)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      NoteVersionPreview(noteId: noteId, version: version),
+                ),
               ),
             ),
           ),

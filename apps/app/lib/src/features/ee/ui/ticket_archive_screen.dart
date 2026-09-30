@@ -439,39 +439,42 @@ class _ArchivedComment extends StatelessWidget {
       if (comment.createdAt != null)
         awFormatDateTime(comment.createdAt!, format: dateFormat),
     ].join(' · ');
-    return Card(
-      key: Key('archive-comment-${comment.id}'),
-      color: comment.internal
-          ? theme.colorScheme.surfaceContainerHighest
-          : null,
-      child: Padding(
-        padding: const EdgeInsets.all(AwSpace.x4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (comment.internal) ...[
-              Row(
-                children: [
-                  const Icon(Icons.lock_outline, size: 16),
-                  const SizedBox(width: AwSpace.x1),
-                  // The label is a sentence in Turkish ("only the desk sees
-                  // it"): on a phone it wraps rather than running off the card.
-                  Expanded(
-                    child: Text(
-                      'ee.tickets.internalNote'.tr(),
-                      style: theme.textTheme.labelMedium,
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        key: Key('archive-comment-${comment.id}'),
+        color: comment.internal
+            ? theme.colorScheme.surfaceContainerHighest
+            : null,
+        child: Padding(
+          padding: const EdgeInsets.all(AwSpace.x4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (comment.internal) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.lock_outline, size: 16),
+                    const SizedBox(width: AwSpace.x1),
+                    // The label is a sentence in Turkish ("only the desk sees
+                    // it"): on a phone it wraps rather than running off the card.
+                    Expanded(
+                      child: Text(
+                        'ee.tickets.internalNote'.tr(),
+                        style: theme.textTheme.labelMedium,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AwSpace.x2),
+                  ],
+                ),
+                const SizedBox(height: AwSpace.x2),
+              ],
+              Text(comment.body, style: theme.textTheme.bodyMedium),
+              if (meta.isNotEmpty) ...[
+                const SizedBox(height: AwSpace.x1),
+                Text(meta, style: theme.textTheme.bodySmall),
+              ],
             ],
-            Text(comment.body, style: theme.textTheme.bodyMedium),
-            if (meta.isNotEmpty) ...[
-              const SizedBox(height: AwSpace.x1),
-              Text(meta, style: theme.textTheme.bodySmall),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -564,32 +567,39 @@ class _EeTicketArchiveSearchScreenState
                             message: 'ee.tickets.archive.emptyBody'.tr(),
                           )
                         : ListView(
+                            padding: awListPadding(context),
                             children: [
                               for (final t in found.tickets)
-                                ListTile(
-                                  key: Key('archive-row-${t.id}'),
-                                  leading: const Icon(
-                                    Icons.inventory_2_outlined,
-                                  ),
-                                  title: Text(
-                                    t.number == null
-                                        ? t.subject
-                                        : '#${t.number} · ${t.subject}',
-                                  ),
-                                  subtitle: Text(
-                                    [
-                                      'ee.tickets.status.${t.status}'.tr(),
-                                      if (t.terminalAt != null)
-                                        awFormatDate(
-                                          t.terminalAt!,
-                                          format: dateFormat,
+                                Padding(
+                                  padding: kAwListRowPadding,
+                                  child: Card(
+                                    child: ListTile(
+                                      key: Key('archive-row-${t.id}'),
+                                      leading: const Icon(
+                                        Icons.inventory_2_outlined,
+                                      ),
+                                      title: Text(
+                                        t.number == null
+                                            ? t.subject
+                                            : '#${t.number} · ${t.subject}',
+                                      ),
+                                      subtitle: Text(
+                                        [
+                                          'ee.tickets.status.${t.status}'.tr(),
+                                          if (t.terminalAt != null)
+                                            awFormatDate(
+                                              t.terminalAt!,
+                                              format: dateFormat,
+                                            ),
+                                        ].join(' · '),
+                                      ),
+                                      onTap: () => Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) =>
+                                              EeArchivedTicketScreen(
+                                                ticketId: t.id,
+                                              ),
                                         ),
-                                    ].join(' · '),
-                                  ),
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => EeArchivedTicketScreen(
-                                        ticketId: t.id,
                                       ),
                                     ),
                                   ),
@@ -709,29 +719,32 @@ class _EeMyArchivedTicketsScreenState
           ],
           data: (page) => [
             for (final t in page.tickets)
-              Card(
-                key: Key('my-archive-row-${t.id}'),
-                child: ListTile(
-                  leading: const Icon(Icons.inventory_2_outlined),
-                  title: Text(
-                    t.number == null
-                        ? t.subject
-                        : '#${t.number} · ${t.subject}',
-                  ),
-                  subtitle: Text(
-                    [
-                      // The service's name, never the unit (EE-087).
-                      if (t.serviceName != null) t.serviceName!,
-                      'ee.tickets.status.${t.status}'.tr(),
-                      if (t.terminalAt != null)
-                        awFormatDate(t.terminalAt!, format: dateFormat),
-                    ].join(' · '),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => EeArchivedTicketScreen(ticketId: t.id),
+              Padding(
+                padding: kAwListRowPadding,
+                child: Card(
+                  key: Key('my-archive-row-${t.id}'),
+                  child: ListTile(
+                    leading: const Icon(Icons.inventory_2_outlined),
+                    title: Text(
+                      t.number == null
+                          ? t.subject
+                          : '#${t.number} · ${t.subject}',
+                    ),
+                    subtitle: Text(
+                      [
+                        // The service's name, never the unit (EE-087).
+                        if (t.serviceName != null) t.serviceName!,
+                        'ee.tickets.status.${t.status}'.tr(),
+                        if (t.terminalAt != null)
+                          awFormatDate(t.terminalAt!, format: dateFormat),
+                      ].join(' · '),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => EeArchivedTicketScreen(ticketId: t.id),
+                      ),
                     ),
                   ),
                 ),

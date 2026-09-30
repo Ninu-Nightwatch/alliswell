@@ -112,17 +112,22 @@ class _RequesterBody extends ConsumerWidget {
           ],
         ),
         if (ticket.waitsOnRequester)
-          Card(
-            key: const Key('ee-requester-waiting-on-you'),
-            color: scheme.primaryContainer,
-            child: ListTile(
-              leading: Icon(
-                Icons.front_hand_outlined,
-                color: scheme.onPrimaryContainer,
-              ),
-              title: Text(
-                'ee.tickets.requester.waitingOnYou'.tr(),
-                style: TextStyle(color: scheme.onPrimaryContainer),
+          // The same step down the status line the waiting reason below
+          // takes; the card used to sit flush under the chips.
+          Padding(
+            padding: const EdgeInsets.only(top: AwSpace.x2),
+            child: Card(
+              key: const Key('ee-requester-waiting-on-you'),
+              color: scheme.primaryContainer,
+              child: ListTile(
+                leading: Icon(
+                  Icons.front_hand_outlined,
+                  color: scheme.onPrimaryContainer,
+                ),
+                title: Text(
+                  'ee.tickets.requester.waitingOnYou'.tr(),
+                  style: TextStyle(color: scheme.onPrimaryContainer),
+                ),
               ),
             ),
           )
@@ -199,20 +204,23 @@ class _Line extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      color: mine ? null : theme.colorScheme.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.all(AwSpace.x3),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              when == null ? author : '$author · $when',
-              style: theme.textTheme.labelMedium,
-            ),
-            const SizedBox(height: AwSpace.x1),
-            SelectableText(body),
-          ],
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        color: mine ? null : theme.colorScheme.surfaceContainerHighest,
+        child: Padding(
+          padding: const EdgeInsets.all(AwSpace.x3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                when == null ? author : '$author · $when',
+                style: theme.textTheme.labelMedium,
+              ),
+              const SizedBox(height: AwSpace.x1),
+              SelectableText(body),
+            ],
+          ),
         ),
       ),
     );

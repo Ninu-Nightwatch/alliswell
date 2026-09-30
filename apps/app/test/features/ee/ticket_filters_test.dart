@@ -13,6 +13,8 @@ import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
+import '../../support/list_rhythm.dart';
+
 /// EE-171 — the filter row, as the person uses it.
 ///
 /// The predicates themselves are proved against the real providers in
@@ -134,6 +136,17 @@ void main() {
   Iterable<String> visible(WidgetTester tester) => rows
       .map((t) => t.id)
       .where((id) => find.byKey(Key('ticket-$id')).evaluate().isNotEmpty);
+
+  testWidgets('the cards keep the list rhythm instead of touching (OPH-353)', (
+    tester,
+  ) async {
+    // The owner's report: the queue's cards sat border on border, because the
+    // theme's card margin is zero and the row added nothing of its own.
+    await pumpQueue(tester);
+    expectCardRhythm(tester, [
+      for (final id in ['T1', 'T2', 'T3']) find.byKey(Key('ticket-$id')),
+    ]);
+  });
 
   testWidgets('a chip narrows the queue, and two narrow it together', (
     tester,

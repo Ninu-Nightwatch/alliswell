@@ -227,27 +227,32 @@ class _InviteTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ListTile(
-      key: Key('invite-${invite.id}'),
-      leading: Icon(
-        invite.isLive ? Icons.schedule : Icons.block_outlined,
-        color: invite.isLive ? null : Theme.of(context).disabledColor,
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        child: ListTile(
+          key: Key('invite-${invite.id}'),
+          leading: Icon(
+            invite.isLive ? Icons.schedule : Icons.block_outlined,
+            color: invite.isLive ? null : Theme.of(context).disabledColor,
+          ),
+          title: Text(invite.email),
+          subtitle: Text(
+            // One vocabulary with the server: pending / accepted / revoked /
+            // expired / burned, each with its own sentence.
+            '${'ee.team.role.${invite.role}'.tr()} · ${'ee.invite.state.${invite.state}'.tr()}',
+          ),
+          trailing: invite.isLive
+              ? IconButton(
+                  key: Key('invite-revoke-${invite.id}'),
+                  tooltip: 'ee.team.invites.revoke'.tr(),
+                  icon: const Icon(Icons.cancel_outlined),
+                  onPressed: () =>
+                      ref.read(eeInvitesProvider.notifier).revoke(invite.id),
+                )
+              : null,
+        ),
       ),
-      title: Text(invite.email),
-      subtitle: Text(
-        // One vocabulary with the server: pending / accepted / revoked /
-        // expired / burned, each with its own sentence.
-        '${'ee.team.role.${invite.role}'.tr()} · ${'ee.invite.state.${invite.state}'.tr()}',
-      ),
-      trailing: invite.isLive
-          ? IconButton(
-              key: Key('invite-revoke-${invite.id}'),
-              tooltip: 'ee.team.invites.revoke'.tr(),
-              icon: const Icon(Icons.cancel_outlined),
-              onPressed: () =>
-                  ref.read(eeInvitesProvider.notifier).revoke(invite.id),
-            )
-          : null,
     );
   }
 }

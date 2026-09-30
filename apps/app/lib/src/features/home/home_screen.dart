@@ -744,7 +744,7 @@ class _HomeSearchResults extends ConsumerWidget {
           rows.add((
             hit.tier,
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
+              padding: kAwListRowPadding,
               child: ExternalEventTile(event: event),
             ),
           ));

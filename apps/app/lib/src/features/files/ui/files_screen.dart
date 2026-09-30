@@ -558,7 +558,7 @@ class _FoldersLayer extends ConsumerWidget {
                     children: [
                       for (final folder in level)
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          padding: kAwListRowPadding,
                           child: Card(
                             clipBehavior: Clip.antiAlias,
                             child: ListTile(

@@ -12,6 +12,8 @@ import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
+import '../../support/list_rhythm.dart';
+
 /// EE-196 — the knowledge base, as the person uses it.
 ///
 ///   1. THE LIST SHOWS WIP, AND SHOWS IT FIRST. A captured question with no
@@ -115,6 +117,11 @@ void main() {
     // tell an unreviewed answer from a published one.
     expect(find.byKey(const Key('kb-status-wip')), findsOneWidget);
     expect(find.byKey(const Key('kb-status-published')), findsOneWidget);
+    // OPH-353: card rows in the list rhythm, not the full-width tiles they
+    // were (DESIGN §4 has no divider-less bare rows either).
+    expectCardRhythm(tester, [
+      for (final row in rows) cardAround(Key('kb-row-${row.id}')),
+    ]);
   });
 
   testWidgets('a WIP article says it has no answer yet', (tester) async {

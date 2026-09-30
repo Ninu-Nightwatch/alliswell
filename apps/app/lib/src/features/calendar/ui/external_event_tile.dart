@@ -6,6 +6,7 @@ import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../data/external_event.dart';
+import '../../../widgets/status_views.dart';
 
 /// One event from the user's calendar (OPH-083).
 ///
@@ -45,7 +46,7 @@ class ExternalEventTile extends ConsumerWidget {
     // below — so one gap read as "stuck together" and the next as a break.
     // Every gap in the list is now the same 6 px, whatever the two rows are.
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: kAwListRowPadding,
       child: Card(
         margin: EdgeInsets.zero,
         color: dimmed ? awRecededSurface(scheme) : null,

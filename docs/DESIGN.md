@@ -109,7 +109,11 @@ Tabular figures for day numbers and timers.
 - **Lists** are inset grouped cards: each row is a `Card` (radius 20,
   hairline border, solid surface) with 6 px vertical rhythm inside
   `awListPadding(context)` (clears glass bars + FAB). No full-width
-  divider lists.
+  divider lists. The rhythm is ONE constant, `kAwListRowPadding` (3 px above
+  and below each row, `widgets/status_views.dart`): a row wraps itself in it
+  (or passes it as the card's `margin`), never a number of its own — the
+  theme's card margin is zero on purpose, so a bare stacked `Card` touches its
+  neighbour. `test/support/list_rhythm.dart` measures the 6 px.
 - **Checkboxes are circular** (Apple Reminders style); checked fill =
   `AwTokens.success`. **Switches read as iOS**: `AwTokens.success` track
   when on, near-white knob.

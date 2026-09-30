@@ -113,6 +113,7 @@
 - **DERS** Metni saran `Opacity` kontrastı ölçülemez kılar (satır 2.11:1) → sakinlik yüzey tokenıyla (`awRecededSurface`); meşru kullanım `check:opacity` izin listesinde.
 - **DERS** Shell `extendBody:true` gövdeyi cam çubuğun altına uzatır → alt boşluksuz kaydırılabilir son satırları gizler: `awListPadding`; "sonun ötesine kaydır" boşluğu kaydırılabilir İÇERİK olmalı.
 - **DERS** Düğme rengini `foregroundColor`'la ver; iç `TextButtonTheme` ambient temanın yerine geçip global 44 px dokunma hedefini sessizce düşürür.
+- **DERS** Temanın kart `margin`'i sıfır → üst üste dizilen çıplak `Card` komşusuna yapışır (talep kuyruğu böyle çıktı) → satır `kAwListRowPadding` ile sarılır ya da onu `margin` verir; `expectCardRhythm` 6 px'i ölçer (OPH-353).
 
 ## i18n — AwI18n, anahtarlar, check:i18n
 - **KARAR** i18n uygulamanın senkron deposu `AwI18n`, paket yok (async delegate fake-async testte yüklenmez); `boot()` `runApp`'ten önce, `MaterialApp` dil dinleyicisinin İÇİNDE (const child yenilenmez) (ADR-0009).

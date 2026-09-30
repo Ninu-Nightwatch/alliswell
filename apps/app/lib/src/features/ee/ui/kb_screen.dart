@@ -80,6 +80,7 @@ class EeKbScreen extends ConsumerWidget {
                   );
                 }
                 return ListView.builder(
+                  padding: awListPadding(context),
                   itemCount: shown.length,
                   itemBuilder: (context, i) => _Row(article: shown[i]),
                 );
@@ -171,30 +172,35 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final retired = article.status == 'retired';
-    return ListTile(
-      key: Key('kb-row-${article.id}'),
-      leading: const Icon(Icons.menu_book_outlined),
-      title: Text(
-        article.title,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        // Retired reads as retired: muted, never struck through or coloured
-        // like an error (the services screen settled this first).
-        style: retired
-            ? theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              )
-            : null,
-      ),
-      subtitle: Text(
-        article.symptom,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: KbStatusChip(status: article.status),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => EeKbArticleScreen(articleId: article.id),
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        child: ListTile(
+          key: Key('kb-row-${article.id}'),
+          leading: const Icon(Icons.menu_book_outlined),
+          title: Text(
+            article.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            // Retired reads as retired: muted, never struck through or coloured
+            // like an error (the services screen settled this first).
+            style: retired
+                ? theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  )
+                : null,
+          ),
+          subtitle: Text(
+            article.symptom,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: KbStatusChip(status: article.status),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => EeKbArticleScreen(articleId: article.id),
+            ),
+          ),
         ),
       ),
     );

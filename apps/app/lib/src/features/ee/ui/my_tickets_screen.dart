@@ -97,48 +97,51 @@ class EeMyTicketsScreen extends ConsumerWidget {
                     ]
                   : [
                       for (final ticket in rows)
-                        Card(
-                          key: Key('my-ticket-${ticket.id}'),
-                          child: ListTile(
-                            // EE-253: the one wait that is theirs to end,
-                            // findable at a glance down a long list.
-                            leading: ticket.waitsOnRequester
-                                ? Icon(
-                                    Icons.front_hand_outlined,
-                                    key: Key(
-                                      'my-ticket-waiting-on-you-${ticket.id}',
-                                    ),
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                  )
-                                : null,
-                            title: Text(ticket.subject),
-                            subtitle: Text(
-                              [
-                                // The service's NAME, because that is what
-                                // the asker recognises — never the unit that
-                                // answers them.
-                                if (ticket.serviceName != null)
-                                  ticket.serviceName!,
-                                _statusLabel(ticket),
-                                // EE-252: "what happened last" (GUIDE-USER).
-                                if (ticket.updatedAt != null)
-                                  'ee.tickets.requester.updated'.tr(
-                                    args: {
-                                      'when': awFormatDateTime(
-                                        ticket.updatedAt!.toLocal(),
-                                        format: ref.watch(dateFormatProvider),
+                        Padding(
+                          padding: kAwListRowPadding,
+                          child: Card(
+                            key: Key('my-ticket-${ticket.id}'),
+                            child: ListTile(
+                              // EE-253: the one wait that is theirs to end,
+                              // findable at a glance down a long list.
+                              leading: ticket.waitsOnRequester
+                                  ? Icon(
+                                      Icons.front_hand_outlined,
+                                      key: Key(
+                                        'my-ticket-waiting-on-you-${ticket.id}',
                                       ),
-                                    },
-                                  ),
-                              ].join(' · '),
-                              style: Theme.of(context).textTheme.bodySmall,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    )
+                                  : null,
+                              title: Text(ticket.subject),
+                              subtitle: Text(
+                                [
+                                  // The service's NAME, because that is what
+                                  // the asker recognises — never the unit that
+                                  // answers them.
+                                  if (ticket.serviceName != null)
+                                    ticket.serviceName!,
+                                  _statusLabel(ticket),
+                                  // EE-252: "what happened last" (GUIDE-USER).
+                                  if (ticket.updatedAt != null)
+                                    'ee.tickets.requester.updated'.tr(
+                                      args: {
+                                        'when': awFormatDateTime(
+                                          ticket.updatedAt!.toLocal(),
+                                          format: ref.watch(dateFormatProvider),
+                                        ),
+                                      },
+                                    ),
+                                ].join(' · '),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              // EE-252: the row opens the request — its own
+                              // address, the requester's view (EE-251).
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => awOpenTicket(context, ticket.id),
                             ),
-                            // EE-252: the row opens the request — its own
-                            // address, the requester's view (EE-251).
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => awOpenTicket(context, ticket.id),
                           ),
                         ),
                     ],

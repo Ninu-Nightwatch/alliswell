@@ -163,7 +163,8 @@ class _ShelfRow extends ConsumerWidget {
       key: Key('shelf-row-${shelf.id}'),
       margin: EdgeInsetsDirectional.only(
         start: sub ? AwSpace.x6 : 0,
-        bottom: AwSpace.x2,
+        top: kAwListRowPadding.top,
+        bottom: kAwListRowPadding.bottom,
       ),
       child: ListTile(
         leading: Icon(serviceIconData(shelf.icon)),

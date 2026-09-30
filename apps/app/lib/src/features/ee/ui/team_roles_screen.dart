@@ -51,27 +51,30 @@ class EeTeamRolesScreen extends ConsumerWidget {
             ),
             const SizedBox(height: AwSpace.x3),
             for (final role in list)
-              Card(
-                key: Key('role-${role.key}'),
-                child: ListTile(
-                  leading: Icon(
-                    role.base ? Icons.shield_outlined : Icons.badge_outlined,
-                  ),
-                  title: Text(_roleName(role)),
-                  subtitle: Text(
-                    'ee.team.roles.summary'.tr(
-                      args: {
-                        'grants': '${role.grants.length}',
-                        'members': '${role.memberCount}',
-                      },
+              Padding(
+                padding: kAwListRowPadding,
+                child: Card(
+                  key: Key('role-${role.key}'),
+                  child: ListTile(
+                    leading: Icon(
+                      role.base ? Icons.shield_outlined : Icons.badge_outlined,
                     ),
+                    title: Text(_roleName(role)),
+                    subtitle: Text(
+                      'ee.team.roles.summary'.tr(
+                        args: {
+                          'grants': '${role.grants.length}',
+                          'members': '${role.memberCount}',
+                        },
+                      ),
+                    ),
+                    trailing: role.editable
+                        ? const Icon(Icons.chevron_right)
+                        : Chip(label: Text('ee.team.roles.locked'.tr())),
+                    onTap: role.editable
+                        ? () => _openEditor(context, ref, role)
+                        : null,
                   ),
-                  trailing: role.editable
-                      ? const Icon(Icons.chevron_right)
-                      : Chip(label: Text('ee.team.roles.locked'.tr())),
-                  onTap: role.editable
-                      ? () => _openEditor(context, ref, role)
-                      : null,
                 ),
               ),
           ],

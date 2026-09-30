@@ -14,6 +14,7 @@ import '../../quick_access/ui/quick_access_add.dart';
 import '../providers.dart';
 import 'attach_menu.dart';
 import 'image_viewer.dart';
+import '../../../widgets/status_views.dart';
 
 /// Shared attachment UI (OPH-154/155, DESIGN §10): one row anatomy for task
 /// attachments, the project Files tab and note media — F1 says these three
@@ -127,36 +128,45 @@ class FileRowTile extends ConsumerWidget {
     // OPH-184: the same swipe every other list has. A file delete removes the
     // OBJECT from storage on every device, so it keeps its confirmation dialog
     // (DESIGN §19 D3) — the swipe is a shortcut to that question, not past it.
-    return AwSwipeToDelete(
-      id: file.id,
-      semanticLabel: 'file.deleteConfirm'.tr(args: {'name': file.name}),
-      onDelete: () => confirmFileDelete(context, ref, file),
-      child: Card(
-        child: ListTile(
-          leading: FileLeadingThumb(file: file),
-          title: Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text(
-            subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+    // The rhythm sits OUTSIDE the swipe, as on a task row: the red the swipe
+    // uncovers is the card's own height, not the gap between two rows.
+    return Padding(
+      padding: kAwListRowPadding,
+      child: AwSwipeToDelete(
+        id: file.id,
+        semanticLabel: 'file.deleteConfirm'.tr(args: {'name': file.name}),
+        onDelete: () => confirmFileDelete(context, ref, file),
+        child: Card(
+          child: ListTile(
+            leading: FileLeadingThumb(file: file),
+            title: Text(
+              file.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
+            subtitle: Text(
+              subtitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            trailing: (badge == null && onMore == null)
+                ? null
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ?badge,
+                      if (onMore != null)
+                        IconButton(
+                          key: Key('file-menu-${file.id}'),
+                          tooltip: 'file.fileActions'.tr(),
+                          icon: const Icon(Icons.more_horiz),
+                          onPressed: onMore,
+                        ),
+                    ],
+                  ),
+            onTap: () => _onTap(context, ref),
           ),
-          trailing: (badge == null && onMore == null)
-              ? null
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ?badge,
-                    if (onMore != null)
-                      IconButton(
-                        key: Key('file-menu-${file.id}'),
-                        tooltip: 'file.fileActions'.tr(),
-                        icon: const Icon(Icons.more_horiz),
-                        onPressed: onMore,
-                      ),
-                  ],
-                ),
-          onTap: () => _onTap(context, ref),
         ),
       ),
     );
@@ -193,60 +203,63 @@ class UploadRowTile extends ConsumerWidget {
     final uploads = ref.read(uploadsProvider.notifier);
     final failed = job.phase == UploadPhase.failed;
 
-    return Card(
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: failed
-                ? theme.colorScheme.errorContainer
-                : theme.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(AwRadius.s),
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        child: ListTile(
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: failed
+                  ? theme.colorScheme.errorContainer
+                  : theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(AwRadius.s),
+            ),
+            child: Icon(
+              failed ? Icons.error_outline : Icons.upload_file_outlined,
+              color: failed
+                  ? theme.colorScheme.onErrorContainer
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
           ),
-          child: Icon(
-            failed ? Icons.error_outline : Icons.upload_file_outlined,
-            color: failed
-                ? theme.colorScheme.onErrorContainer
-                : theme.colorScheme.onSurfaceVariant,
-          ),
+          title: Text(job.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: failed
+              ? Text(
+                  _errorText(job.errorCode, 'file.uploadFailed'.tr()),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.only(top: AwSpace.x2),
+                  child: LinearProgressIndicator(
+                    value: job.progress > 0 ? job.progress : null,
+                    minHeight: 4,
+                  ),
+                ),
+          trailing: failed
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'common.retry'.tr(),
+                      icon: const Icon(Icons.refresh),
+                      onPressed: () => uploads.retry(job.localId),
+                    ),
+                    IconButton(
+                      tooltip: 'common.close'.tr(),
+                      icon: const Icon(Icons.close),
+                      onPressed: () => uploads.dismiss(job.localId),
+                    ),
+                  ],
+                )
+              : IconButton(
+                  tooltip: 'common.cancel'.tr(),
+                  icon: const Icon(Icons.close),
+                  onPressed: () => uploads.cancel(job.localId),
+                ),
         ),
-        title: Text(job.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: failed
-            ? Text(
-                _errorText(job.errorCode, 'file.uploadFailed'.tr()),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
-              )
-            : Padding(
-                padding: const EdgeInsets.only(top: AwSpace.x2),
-                child: LinearProgressIndicator(
-                  value: job.progress > 0 ? job.progress : null,
-                  minHeight: 4,
-                ),
-              ),
-        trailing: failed
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'common.retry'.tr(),
-                    icon: const Icon(Icons.refresh),
-                    onPressed: () => uploads.retry(job.localId),
-                  ),
-                  IconButton(
-                    tooltip: 'common.close'.tr(),
-                    icon: const Icon(Icons.close),
-                    onPressed: () => uploads.dismiss(job.localId),
-                  ),
-                ],
-              )
-            : IconButton(
-                tooltip: 'common.cancel'.tr(),
-                icon: const Icon(Icons.close),
-                onPressed: () => uploads.cancel(job.localId),
-              ),
       ),
     );
   }

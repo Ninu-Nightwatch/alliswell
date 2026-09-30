@@ -7,6 +7,7 @@ import '../my_tickets_providers.dart';
 import '../new_ticket_providers.dart';
 import '../ticket_drafts_providers.dart';
 import 'new_ticket_screen.dart';
+import '../../../widgets/status_views.dart';
 
 /// EE-225 — the requests still on their way, above the ones that arrived.
 ///
@@ -103,7 +104,7 @@ class _DraftCard extends ConsumerWidget {
         catalog != null;
     return Card(
       key: Key('ticket-draft-${draft.id}'),
-      margin: const EdgeInsets.only(bottom: AwSpace.x2),
+      margin: kAwListRowPadding,
       child: Padding(
         padding: const EdgeInsets.all(AwSpace.x3),
         child: Row(

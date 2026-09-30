@@ -191,7 +191,7 @@ class NoteTile extends ConsumerWidget {
     ].join(' · ');
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: kAwListRowPadding,
       // OPH-184: a note could only be deleted from inside its editor — the
       // list offered archive and nothing else.
       child: AwSwipeToDelete(

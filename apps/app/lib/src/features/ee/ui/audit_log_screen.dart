@@ -5,6 +5,7 @@ import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../data/history_models.dart';
 import '../history_providers.dart';
+import '../../../widgets/status_views.dart';
 
 /// The team's whole history, filtered (EE-130).
 ///
@@ -198,9 +199,9 @@ class _EventList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
+    return ListView.builder(
+      padding: awListPadding(context),
       itemCount: page.items.length + (page.hasMore ? 1 : 0),
-      separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
         if (index >= page.items.length) {
           // The server has more. Said plainly rather than with an infinite
@@ -233,28 +234,33 @@ class _AuditRow extends StatelessWidget {
         ? 'ee.history.actorSystem'.tr()
         : (event.actorName ?? 'ee.history.actorUnknown'.tr());
 
-    return ListTile(
-      key: Key('audit-row-${event.id}'),
-      dense: true,
-      title: Text.rich(
-        TextSpan(
-          children: [
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        child: ListTile(
+          key: Key('audit-row-${event.id}'),
+          dense: true,
+          title: Text.rich(
             TextSpan(
-              text: actorName,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              children: [
+                TextSpan(
+                  text: actorName,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const TextSpan(text: ' '),
+                // The verb dictionary is closed server-side precisely so every
+                // verb has a sentence here (EE-023 rule 2).
+                TextSpan(text: 'ee.verb.${event.verb}'.tr()),
+              ],
             ),
-            const TextSpan(text: ' '),
-            // The verb dictionary is closed server-side precisely so every
-            // verb has a sentence here (EE-023 rule 2).
-            TextSpan(text: 'ee.verb.${event.verb}'.tr()),
-          ],
+          ),
+          subtitle: Text(
+            '${event.entityType} · ${_stamp(event.occurredAt)}',
+            style: theme.textTheme.bodySmall,
+          ),
         ),
-      ),
-      subtitle: Text(
-        '${event.entityType} · ${_stamp(event.occurredAt)}',
-        style: theme.textTheme.bodySmall,
       ),
     );
   }

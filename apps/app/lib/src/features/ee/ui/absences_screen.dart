@@ -102,16 +102,19 @@ class _AbsenceList extends ConsumerWidget {
           ),
           const SizedBox(height: AwSpace.x2),
           for (final unit in onCall)
-            Card(
-              key: Key('oncall-${unit.unitId}'),
-              child: ListTile(
-                leading: Icon(
-                  unit.nobodyAvailable
-                      ? Icons.phone_disabled_outlined
-                      : Icons.phone_in_talk_outlined,
+            Padding(
+              padding: kAwListRowPadding,
+              child: Card(
+                key: Key('oncall-${unit.unitId}'),
+                child: ListTile(
+                  leading: Icon(
+                    unit.nobodyAvailable
+                        ? Icons.phone_disabled_outlined
+                        : Icons.phone_in_talk_outlined,
+                  ),
+                  title: Text(unit.unitName),
+                  subtitle: Text(_onCallLine(unit, me: me, format: format)),
                 ),
-                title: Text(unit.unitName),
-                subtitle: Text(_onCallLine(unit, me: me, format: format)),
               ),
             ),
           const SizedBox(height: AwSpace.x4),
@@ -129,26 +132,29 @@ class _AbsenceList extends ConsumerWidget {
           )
         else
           for (final absence in page.absences)
-            Card(
-              key: Key('absence-${absence.id}'),
-              child: ListTile(
-                leading: const Icon(Icons.event_busy_outlined),
-                title: Text(
-                  absence.userId == me
-                      ? 'ee.absences.you'.tr()
-                      : (absence.userName ?? '—'),
+            Padding(
+              padding: kAwListRowPadding,
+              child: Card(
+                key: Key('absence-${absence.id}'),
+                child: ListTile(
+                  leading: const Icon(Icons.event_busy_outlined),
+                  title: Text(
+                    absence.userId == me
+                        ? 'ee.absences.you'.tr()
+                        : (absence.userName ?? '—'),
+                  ),
+                  subtitle: Text(_range(absence, format: format)),
+                  // Only what the door allows: your own, or everybody's for
+                  // somebody who records them for others.
+                  trailing: absence.userId == me || page.canManage
+                      ? IconButton(
+                          key: Key('absence-remove-${absence.id}'),
+                          tooltip: 'ee.absences.remove'.tr(),
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () => _remove(context, ref, absence),
+                        )
+                      : null,
                 ),
-                subtitle: Text(_range(absence, format: format)),
-                // Only what the door allows: your own, or everybody's for
-                // somebody who records them for others.
-                trailing: absence.userId == me || page.canManage
-                    ? IconButton(
-                        key: Key('absence-remove-${absence.id}'),
-                        tooltip: 'ee.absences.remove'.tr(),
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _remove(context, ref, absence),
-                      )
-                    : null,
               ),
             ),
         if (page.truncated)

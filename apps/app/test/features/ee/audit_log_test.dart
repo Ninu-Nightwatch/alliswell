@@ -9,6 +9,8 @@ import 'package:alliswell/src/features/ee/ui/audit_log_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
+import '../../support/list_rhythm.dart';
+
 /// EE-130 — the team history screen, asserted where it would MISLEAD.
 ///
 /// The sharpest thing about an audit screen is its empty state, because
@@ -106,6 +108,20 @@ void main() {
   });
 
   group('the list', () {
+    testWidgets('events are card rows in the list rhythm, with no dividers '
+        '(OPH-353)', (tester) async {
+      await _pump(
+        tester,
+        page: EeHistoryPage(items: [_event(), _event(id: 'E2')]),
+      );
+      // A divider between two rows would make the gap 7 px, so the rhythm
+      // itself proves they are gone (the filter bar keeps its own).
+      expectCardRhythm(tester, [
+        cardAround(const Key('audit-row-E1')),
+        cardAround(const Key('audit-row-E2')),
+      ]);
+    });
+
     testWidgets('an event reads as a sentence: who, then what', (tester) async {
       await _pump(tester, page: EeHistoryPage(items: [_event()]));
       expect(find.byKey(const Key('audit-row-E1')), findsOneWidget);

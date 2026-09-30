@@ -161,7 +161,7 @@ class EeChangeRow extends ConsumerWidget {
     final format = ref.watch(dateFormatProvider);
     return Card(
       key: Key('change-${change.id}'),
-      margin: const EdgeInsets.only(bottom: AwSpace.x2),
+      margin: kAwListRowPadding,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => awOpenChange(context, change.id),

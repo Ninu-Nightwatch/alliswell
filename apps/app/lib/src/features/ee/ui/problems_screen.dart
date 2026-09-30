@@ -136,7 +136,7 @@ class EeProblemRow extends StatelessWidget {
     final muted = theme.colorScheme.onSurfaceVariant;
     return Card(
       key: Key('problem-${problem.id}'),
-      margin: const EdgeInsets.only(bottom: AwSpace.x2),
+      margin: kAwListRowPadding,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => awOpenProblem(context, problem.id),

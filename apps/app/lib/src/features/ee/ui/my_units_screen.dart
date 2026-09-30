@@ -250,41 +250,44 @@ class _Row extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    return Card(
-      key: Key('unit-ticket-${ticket.id}'),
-      child: ListTile(
-        title: Text(
-          ticket.number == null
-              ? ticket.subject
-              : '#${ticket.number} · ${ticket.subject}',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: AwSpace.x1),
-          child: Wrap(
-            spacing: AwSpace.x3,
-            runSpacing: AwSpace.x1,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                ticket.unitName,
-                key: Key('unit-ticket-unit-${ticket.id}'),
-                style: theme.textTheme.labelMedium,
-              ),
-              Text(
-                'ee.tickets.status.${ticket.status}'.tr(),
-                style: theme.textTheme.bodySmall,
-              ),
-              AwSlaChip.values(
-                slaStatus: ticket.slaStatus,
-                slaDueAt: ticket.slaDueAt,
-              ),
-            ],
+    return Padding(
+      padding: kAwListRowPadding,
+      child: Card(
+        key: Key('unit-ticket-${ticket.id}'),
+        child: ListTile(
+          title: Text(
+            ticket.number == null
+                ? ticket.subject
+                : '#${ticket.number} · ${ticket.subject}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: AwSpace.x1),
+            child: Wrap(
+              spacing: AwSpace.x3,
+              runSpacing: AwSpace.x1,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  ticket.unitName,
+                  key: Key('unit-ticket-unit-${ticket.id}'),
+                  style: theme.textTheme.labelMedium,
+                ),
+                Text(
+                  'ee.tickets.status.${ticket.status}'.tr(),
+                  style: theme.textTheme.bodySmall,
+                ),
+                AwSlaChip.values(
+                  slaStatus: ticket.slaStatus,
+                  slaDueAt: ticket.slaDueAt,
+                ),
+              ],
+            ),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => openTicketAcrossUnits(context, ref, ticket),
         ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => openTicketAcrossUnits(context, ref, ticket),
       ),
     );
   }

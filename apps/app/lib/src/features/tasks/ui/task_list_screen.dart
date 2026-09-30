@@ -147,7 +147,7 @@ class _CaptureTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: kAwListRowPadding,
       // OPH-184: delete moved out of the row's icon cluster and onto the swipe
       // — the same gesture and the same undo every other list now has. The
       // confirm dialog went with it (D3: a leaf delete you can take back does
