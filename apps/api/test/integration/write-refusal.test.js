@@ -73,13 +73,14 @@ describe.runIf(enabled)('integration: a write an extension refuses is rolled bac
     return r && { ...r, revision: Number(r.revision) };
   };
 
-  const push = (entityId, clientMutationId = newId()) =>
+  // A replay is recorded per device: `clientId` has to be the same on a resend.
+  const push = (entityId, clientMutationId = newId(), clientId = newId()) =>
     app.inject({
       method: 'POST',
       url: '/api/v1/sync/push',
       headers: owner.headers,
       payload: {
-        clientId: newId(),
+        clientId,
         workspaceId: owner.workspace.id,
         baseRevision: 0,
         mutations: [
@@ -128,7 +129,8 @@ describe.runIf(enabled)('integration: a write an extension refuses is rolled bac
   it('push: rejected with the real row to rebase on, recorded so a replay answers the same', async () => {
     const task = await make('refuse me');
     const clientMutationId = newId();
-    const first = await push(task.id, clientMutationId);
+    const clientId = newId();
+    const first = await push(task.id, clientMutationId, clientId);
     expect(first.statusCode).toBe(200);
     const result = first.json().results[0];
     expect(result).toMatchObject({
@@ -146,7 +148,7 @@ describe.runIf(enabled)('integration: a write an extension refuses is rolled bac
     expect(await row(task.id)).toMatchObject({ status: 'open', revision: task.revision });
 
     // The same outbox row resent (a retry after a lost answer) gets the recorded answer.
-    const again = await push(task.id, clientMutationId);
+    const again = await push(task.id, clientMutationId, clientId);
     expect(again.json().results[0]).toMatchObject({
       status: 'rejected',
       errorCode: 'SEAM_REFUSED',
