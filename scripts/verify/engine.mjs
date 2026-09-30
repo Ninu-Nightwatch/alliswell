@@ -125,13 +125,38 @@ export function sandboxEnabled() {
 }
 
 const shq = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
-const REMOTE_BASE = `/srv/sandbox/tmp/${basename(CORE_ROOT).toLowerCase()}-verify`;
 
-/** `sbx run` keys its workspace on the current directory's name, so always run it from here. */
+/**
+ * The checkout the sandbox knows this repository by. `sbx` keys its workspace and its
+ * compose project on the current directory's NAME, and a git worktree (the desktop app
+ * opens one per session) has a name of its own: from one, `sbx run` answered "project
+ * not linked", `sbx up` started a second stack on the ports the first one holds, and the
+ * database step waited for `<project>-mysql-1` of a project that was not the one up. So a
+ * worktree speaks to the sandbox as its main checkout — the parent of the shared `.git`.
+ * A plain checkout is its own main checkout, and nothing changes for it.
+ */
+function sandboxHome() {
+  const r = spawnSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], {
+    cwd: CORE_ROOT,
+    encoding: 'utf8',
+  });
+  const common = r.status === 0 ? r.stdout.trim() : '';
+  return common && basename(common) === '.git' ? dirname(common) : CORE_ROOT;
+}
+const SANDBOX_HOME = sandboxHome();
+// The TREE is this checkout's own (two checkouts must not run each other's code), but the
+// stack and its database are one per host: every checkout's run takes the main checkout's
+// lock, so two sessions verifying at once take turns instead of dropping the same test
+// database under each other. The main checkout's own lock file IS this path, so an older
+// engine running there and this one exclude each other too.
+const REMOTE_BASE = `/srv/sandbox/tmp/${basename(CORE_ROOT).toLowerCase()}-verify`;
+const RUN_LOCK = `/srv/sandbox/tmp/${basename(SANDBOX_HOME).toLowerCase()}-verify/.lock`;
+
+/** `sbx run` keys its workspace on the directory's name, so always run it as the main checkout. */
 function sbx(args, { input, onLine } = {}) {
   return new Promise((done) => {
     const child = spawn('sbx', args, {
-      cwd: CORE_ROOT,
+      cwd: SANDBOX_HOME,
       env: { ...process.env, SBX_TIMEOUT: process.env.SBX_TIMEOUT || '3600' },
       stdio: [input ? 'pipe' : 'ignore', 'pipe', 'pipe'],
     });
@@ -294,7 +319,8 @@ async function runSandboxLeg(steps, config, ctx) {
     [
       'run',
       [
-        `exec 9>${shq(`${REMOTE_BASE}/.lock`)}`,
+        `mkdir -p ${shq(dirname(RUN_LOCK))}`,
+        `exec 9>${shq(RUN_LOCK)}`,
         'flock -w 900 9 || { echo "@@verify busy"; exit 75; }',
         `echo ${script} | base64 -d > ${shq(`${REMOTE_BASE}/run-${config.profile}.sh`)}`,
         `bash ${shq(`${REMOTE_BASE}/run-${config.profile}.sh`)}`,
@@ -529,8 +555,16 @@ export async function runCli(config) {
   // K2 owns the stack's lifetime: bring it down so nothing keeps running on a shared host.
   // K1 leaves it up for the next task's check; the sandbox's TTL reaper is the backstop.
   if (ctx.upped && mode === 'batch' && !opts['keep-stack']) {
-    const down = await sbx(['down']);
-    ctx.log(`sandbox: sbx down (exit ${down.code})`);
+    // The stack is shared with every other checkout's runs (RUN_LOCK): one that holds the
+    // lock right now is mid-run on this database, and pulling it down would fail it for a
+    // reason that has nothing to do with its code. Its own K2, or the TTL reaper, stops it.
+    const free = await sbx(['run', `exec 9>${shq(RUN_LOCK)}; flock -n 9 && echo free || true`]);
+    if (/\bfree\b/.test(free.text)) {
+      const down = await sbx(['down']);
+      ctx.log(`sandbox: sbx down (exit ${down.code})`);
+    } else {
+      ctx.log('sandbox: another run holds the stack — left up for it');
+    }
   }
 
   const failed = [...results].filter(([, r]) => r.code !== 0);
