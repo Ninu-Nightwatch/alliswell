@@ -1,21 +1,29 @@
-name: Build Windows App
+name: Build and Security Scan Windows App
 
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2025
 
     steps:
+      # Gepinnt auf actions/checkout v7.0.1
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
+      # Gepinnt auf subosito/flutter-action v2.23.0
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           channel: stable
           cache: true
+
+      - name: Show Flutter version
+        run: flutter --version
 
       - name: Enable Windows desktop
         run: flutter config --enable-windows-desktop
@@ -28,9 +36,60 @@ jobs:
         working-directory: apps/app
         run: flutter build windows --release
 
-      - name: Upload Windows bundle
-        uses: actions/upload-artifact@v4
+      # Microsoft Defender Signaturen aktualisieren
+      - name: Update Microsoft Defender signatures
+        shell: powershell
+        run: |
+          Update-MpSignature
+          Get-MpComputerStatus |
+            Select-Object AntivirusEnabled, RealTimeProtectionEnabled, AntivirusSignatureVersion
+
+      # Das tatsächlich erzeugte Programm scannen
+      - name: Scan Windows build with Microsoft Defender
+        shell: powershell
+        run: |
+          $buildPath = Resolve-Path "apps/app/build/windows/x64/runner/Release"
+
+          Write-Host "Scanning:"
+          Write-Host $buildPath
+
+          $mpCmd = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe"
+
+          if (-not (Test-Path $mpCmd)) {
+            throw "Microsoft Defender command-line scanner not found."
+          }
+
+          & $mpCmd -Scan -ScanType 3 -File "$buildPath"
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Microsoft Defender scan failed or detected a threat. Exit code: $LASTEXITCODE"
+          }
+
+          Write-Host "Microsoft Defender scan completed successfully."
+
+      # Hashes aller ausgelieferten Dateien erzeugen
+      - name: Generate SHA256 checksums
+        shell: powershell
+        run: |
+          $buildPath = Resolve-Path "apps/app/build/windows/x64/runner/Release"
+          $output = Join-Path $buildPath "SHA256SUMS.txt"
+
+          Get-ChildItem $buildPath -File -Recurse |
+            Where-Object { $_.Name -ne "SHA256SUMS.txt" } |
+            ForEach-Object {
+              $hash = Get-FileHash $_.FullName -Algorithm SHA256
+              $relative = $_.FullName.Substring($buildPath.Path.Length + 1)
+              "$($hash.Hash)  $relative"
+            } |
+            Out-File -FilePath $output -Encoding utf8
+
+          Get-Content $output
+
+      # Gepinnt auf actions/upload-artifact v7.0.1
+      - name: Upload scanned Windows bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: alliswell-windows
+          name: alliswell-windows-scanned
           path: apps/app/build/windows/x64/runner/Release/
           if-no-files-found: error
+          retention-days: 30
